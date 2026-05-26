@@ -11,6 +11,12 @@ export interface HttpClientOptions {
   /** API key sent as `Authorization: Bearer <key>`. */
   apiKey: string
   /**
+   * Override the base URL. Trailing slashes are stripped. Falls back to
+   * {@link CwblInstrumentation.getBaseUrl} (which resolves to the production
+   * host) when unset.
+   */
+  baseUrl?: string
+  /**
    * Per-request timeout in milliseconds. Pass `0` (or omit) to disable the
    * timeout entirely.
    */
@@ -65,7 +71,7 @@ export class HttpClient {
   private readonly timeoutMs: number
 
   constructor(options: HttpClientOptions) {
-    this.baseUrl = stripTrailingSlash(CwblInstrumentation.getBaseUrl())
+    this.baseUrl = stripTrailingSlash(options.baseUrl ?? CwblInstrumentation.getBaseUrl())
     this.apiKey = options.apiKey
     this.fetch = CwblInstrumentation.getFetch()
     this.timeoutMs = options.timeoutMs ?? 0

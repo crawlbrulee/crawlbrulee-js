@@ -21,6 +21,13 @@ export interface CrawlbruleeOptions {
    */
   apiKey: string
   /**
+   * Override the base URL the SDK targets. Defaults to the production host
+   * ({@link DEFAULT_BASE_URL}). Intended for local development and staging
+   * (e.g. `https://api.staging.crawlbrulee.com`) — production callers should
+   * leave it unset. Trailing slashes are stripped.
+   */
+  baseUrl?: string
+  /**
    * Per-request timeout in milliseconds. Defaults to `0` (no timeout). Set to a
    * positive number to abort slow requests; a per-call `timeoutMs` override
    * takes precedence. The timeout covers the WHOLE request, including the
@@ -79,7 +86,7 @@ export class Crawlbrulee {
         { status: 0, errorName: null }
       )
     }
-    this.http = new HttpClient({ apiKey, timeoutMs: options.timeoutMs })
+    this.http = new HttpClient({ apiKey, baseUrl: options.baseUrl, timeoutMs: options.timeoutMs })
     this.baseUrl = this.http.baseUrl
   }
 
