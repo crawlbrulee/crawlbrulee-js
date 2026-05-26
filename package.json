@@ -13,8 +13,19 @@
     "sitemap"
   ],
   "license": "AGPL-3.0-only",
-  "private": true,
   "type": "module",
+  "sideEffects": false,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/crawlbrulee/crawlbrulee-js.git"
+  },
+  "homepage": "https://github.com/crawlbrulee/crawlbrulee-js#readme",
+  "bugs": {
+    "url": "https://github.com/crawlbrulee/crawlbrulee-js/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -43,7 +54,9 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "clean": "rm -rf dist coverage .turbo node_modules"
+    "clean": "rm -rf dist coverage .turbo node_modules",
+    "verify": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test && pnpm build",
+    "prepublishOnly": "pnpm verify"
   },
   "devDependencies": {
     "@eslint/js": "^9.18.0",
