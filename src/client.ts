@@ -1,4 +1,4 @@
-import { DEFAULT_BASE_URL, ENV_API_KEY } from './config.js'
+import { ENV_API_KEY } from './config.js'
 import { CrawlbruleeError } from './errors.js'
 import { HttpClient, type RequestOptions } from './http.js'
 import type {
@@ -20,13 +20,6 @@ export interface CrawlbruleeOptions {
    * whitespace is stripped; an empty / whitespace-only value is rejected.
    */
   apiKey: string
-  /**
-   * @internal
-   * Override the base URL. Reserved for local development and tests — production
-   * always uses the burned-in {@link DEFAULT_BASE_URL}. Trailing slashes are
-   * stripped.
-   */
-  baseUrl?: string
   /**
    * Per-request timeout in milliseconds. Defaults to `0` (no timeout). Set to a
    * positive number to abort slow requests; a per-call `timeoutMs` override
@@ -86,14 +79,8 @@ export class Crawlbrulee {
         { status: 0, errorName: null }
       )
     }
-    const baseUrl = (options.baseUrl ?? DEFAULT_BASE_URL).replace(/\/+$/, '')
-
-    this.baseUrl = baseUrl
-    this.http = new HttpClient({
-      baseUrl,
-      apiKey,
-      timeoutMs: options.timeoutMs,
-    })
+    this.http = new HttpClient({ apiKey, timeoutMs: options.timeoutMs })
+    this.baseUrl = this.http.baseUrl
   }
 
   /**

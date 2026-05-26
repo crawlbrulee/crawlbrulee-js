@@ -8,8 +8,6 @@ export type HttpMethod = 'GET' | 'POST'
 
 /** Options the SDK accepts at construction time for the HTTP layer. */
 export interface HttpClientOptions {
-  /** Base URL of the API (trailing slash is stripped). */
-  baseUrl: string
   /** API key sent as `Authorization: Bearer <key>`. */
   apiKey: string
   /**
@@ -56,17 +54,18 @@ interface ComposedSignal {
  * - Mapping non-2xx responses to typed `CrawlbruleeError` subclasses via
  *   {@link createApiError}.
  *
- * The `fetch` implementation is sourced from {@link CwblInstrumentation} at
- * construction time so tests can stub the module.
+ * The base URL and `fetch` implementation are sourced from
+ * {@link CwblInstrumentation} at construction time so tests can stub the
+ * module.
  */
 export class HttpClient {
-  private readonly baseUrl: string
+  readonly baseUrl: string
   private readonly apiKey: string
   private readonly fetch: FetchLike
   private readonly timeoutMs: number
 
   constructor(options: HttpClientOptions) {
-    this.baseUrl = stripTrailingSlash(options.baseUrl)
+    this.baseUrl = stripTrailingSlash(CwblInstrumentation.getBaseUrl())
     this.apiKey = options.apiKey
     this.fetch = CwblInstrumentation.getFetch()
     this.timeoutMs = options.timeoutMs ?? 0

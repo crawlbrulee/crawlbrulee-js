@@ -1,12 +1,14 @@
+import { DEFAULT_BASE_URL } from './config.js'
 import { CrawlbruleeError } from './errors.js'
 
 /** Function shape compatible with the global `fetch`. */
 export type FetchLike = typeof fetch
 
 /**
- * Centralized factory for low-level dependencies the SDK injects into its HTTP
- * layer. Production code resolves `getFetch()` to the runtime's global `fetch`;
- * tests stub this module to return a mock implementation.
+ * Centralized factory for the low-level dependencies the SDK injects into its
+ * HTTP layer. Production code resolves these to the runtime's global `fetch`
+ * and the burned-in production base URL; tests stub this module to swap in
+ * mocks and alternate hosts.
  *
  * This is internal — it is not exported from the package's public entry. Tests
  * import it from `src/instrumentation.js` directly and use `vi.spyOn` to
@@ -26,5 +28,13 @@ export const CwblInstrumentation = {
       )
     }
     return g.fetch.bind(globalThis)
+  },
+
+  /**
+   * Resolve the base URL the SDK should target. Returns the production host by
+   * default; tests stub this to point at a mock origin.
+   */
+  getBaseUrl(): string {
+    return DEFAULT_BASE_URL
   },
 }

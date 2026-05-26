@@ -57,20 +57,25 @@ export function textResponse(
 }
 
 /**
- * Build a {@link Crawlbrulee} wired up to a mock fetch by stubbing
- * `CwblInstrumentation.getFetch()`. The stub is restored automatically between
- * tests via vitest's `restoreMocks: true` config.
+ * Test base URL used by the spy on `CwblInstrumentation.getBaseUrl()` inside
+ * {@link buildClient}. Real test bodies assert against this hostname.
+ */
+export const TEST_BASE_URL = 'https://api.test.example'
+
+/**
+ * Build a {@link Crawlbrulee} wired up to a mock fetch and the test base URL
+ * by stubbing `CwblInstrumentation.getFetch()` + `getBaseUrl()`. Both stubs
+ * are restored automatically between tests via vitest's `restoreMocks: true`
+ * config.
  */
 export function buildClient(
   fetchImpl: typeof fetch,
-  overrides: Partial<Omit<CrawlbruleeOptions, 'apiKey'>> = {}
+  overrides: Partial<Omit<CrawlbruleeOptions, 'apiKey'>> & { baseUrl?: string } = {}
 ) {
+  const { baseUrl = TEST_BASE_URL, ...rest } = overrides
   vi.spyOn(CwblInstrumentation, 'getFetch').mockReturnValue(fetchImpl)
-  return new Crawlbrulee({
-    apiKey: 'cble_test_key',
-    baseUrl: 'https://api.test.example',
-    ...overrides,
-  })
+  vi.spyOn(CwblInstrumentation, 'getBaseUrl').mockReturnValue(baseUrl)
+  return new Crawlbrulee({ apiKey: 'cble_test_key', ...rest })
 }
 
 /** Pull out the URL + RequestInit of a single recorded fetch call. */

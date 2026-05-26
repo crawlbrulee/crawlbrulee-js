@@ -4,15 +4,12 @@ import { TransportError } from '../src/index.js'
 import { HttpClient } from '../src/http.js'
 import { CwblInstrumentation } from '../src/instrumentation.js'
 
-import { createFetchQueue, jsonResponse } from './helpers.js'
+import { createFetchQueue, jsonResponse, TEST_BASE_URL } from './helpers.js'
 
 function buildHttp(fetchImpl: typeof fetch, opts: { timeoutMs?: number } = {}) {
   vi.spyOn(CwblInstrumentation, 'getFetch').mockReturnValue(fetchImpl)
-  return new HttpClient({
-    baseUrl: 'https://api.test.example',
-    apiKey: 'k',
-    timeoutMs: opts.timeoutMs,
-  })
+  vi.spyOn(CwblInstrumentation, 'getBaseUrl').mockReturnValue(TEST_BASE_URL)
+  return new HttpClient({ apiKey: 'k', timeoutMs: opts.timeoutMs })
 }
 
 describe('HttpClient — path validation', () => {
