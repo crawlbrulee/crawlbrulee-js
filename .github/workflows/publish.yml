@@ -68,7 +68,12 @@ jobs:
         # No NODE_AUTH_TOKEN: npm >= 11.5 performs OIDC token exchange via the
         # trusted publisher configured for this repo on npmjs.com. prepublishOnly
         # (pnpm verify) runs the full check + builds dist before packing.
-        run: npm publish --provenance --access public
+        #
+        # No --provenance: npm only generates provenance attestations for PUBLIC
+        # source repositories (it verifies the Sigstore bundle against publicly
+        # visible source). This repo is private, so --provenance fails with HTTP
+        # 422. Re-add --provenance if/when the repo is made public.
+        run: npm publish --access public
 
       - name: Create GitHub Release
         env:
