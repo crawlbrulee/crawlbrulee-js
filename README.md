@@ -5,7 +5,7 @@ The official TypeScript / JavaScript SDK for the [crawlbrulee](https://crawlbrul
 - Fully typed.
 - ESM + CommonJS, ships its own `.d.ts`.
 - Zero runtime dependencies — just `fetch`.
-- Works on Node.js 20+, modern Deno, Bun, and runtimes where `fetch` is available.
+- Works on Node.js 22+, modern Deno, Bun, and runtimes where `fetch` is available.
 
 > **Status:** v0.1.0 (beta). API surface is stabilizing — expect minor breaking changes between 0.x releases.
 
