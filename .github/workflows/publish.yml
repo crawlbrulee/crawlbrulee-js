@@ -12,6 +12,14 @@ concurrency:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    # GitHub environment for the publish step. Protection rules (required
+    # reviewers / wait timer / tag restrictions) require a public repo or a paid
+    # plan; on a private + Free repo this runs unprotected but is ready to gate
+    # the moment that changes. Also the optional match condition for the npm
+    # trusted publisher (scope it to environment "npm" on npmjs.com to enforce).
+    environment:
+      name: npm
+      url: https://www.npmjs.com/package/@crawlbrulee/sdk
     permissions:
       contents: write # create the GitHub Release
       id-token: write # OIDC trusted publishing + provenance attestations
