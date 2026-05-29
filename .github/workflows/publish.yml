@@ -36,8 +36,12 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 24
-          registry-url: https://registry.npmjs.org
           cache: pnpm
+          # Deliberately NO registry-url: it makes setup-node write an .npmrc
+          # and set NODE_AUTH_TOKEN to a dummy placeholder, which npm then sends
+          # as a (bogus) auth token instead of performing the OIDC trusted-
+          # publishing exchange. Without it, npm >= 11.5 + id-token: write does
+          # OIDC automatically against the default registry.npmjs.org.
 
       - name: Verify tagged commit is on main
         run: |
