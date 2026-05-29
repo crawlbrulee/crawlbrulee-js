@@ -2,7 +2,7 @@
 
 The official TypeScript / JavaScript SDK for the [crawlbrulee](https://crawlbrulee.com) web-scraping API.
 
-- Hand-written, fully typed.
+- Fully typed.
 - ESM + CommonJS, ships its own `.d.ts`.
 - Zero runtime dependencies — just `fetch`.
 - Works on Node.js 20+, modern Deno, Bun, and runtimes where `fetch` is available.
