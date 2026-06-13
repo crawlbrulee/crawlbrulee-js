@@ -155,6 +155,63 @@ Return the organization name and identifying details of the API token used to au
 
 ---
 
+## Webhooks
+
+When an async scrape job finishes, crawlbrulee can `POST` a `scrape.complete` webhook to your configured endpoint. The SDK ships two helpers for it.
+
+### `verifyWebhookSignature(options)`
+
+A standalone, network-free helper (built on Web Crypto, so it runs on Node.js 22+, browsers, Bun, Deno, and edge) that verifies the `X-Cwbl-Signature` header. **It returns a result object rather than throwing** — a failed verification is normal control flow.
+
+```ts
+import { verifyWebhookSignature } from '@crawlbrulee/sdk'
+
+const result = await verifyWebhookSignature({
+  payload: rawBody, // the RAW request body (string or Uint8Array) — never re-serialized JSON
+  headers: req.headers, // a fetch `Headers` instance OR a plain (lowercased) object
+  secret: process.env.CRAWLBRULEE_WEBHOOK_SECRET!, // your current whsec_… secret
+  toleranceSeconds: 300, // optional; default 300, replay-protection window. Pass 0 to disable.
+})
+
+if (result.verified) {
+  console.log('signed with', result.signedWith) // 'primary' | 'rotated'
+} else {
+  console.warn('rejected:', result.reason) // 'missing_signature' | 'malformed_signature' | 'timestamp_out_of_tolerance' | 'signature_mismatch'
+}
+```
+
+During a **signing-secret rotation grace window** the API sends a second `X-Cwbl-Signature-Rotated` header signed with the previous secret. `verifyWebhookSignature` tries your `secret` against the primary header first, then the rotated one, and reports which matched via `signedWith` — so verification keeps working whether you still hold the old secret or have already rotated to the new one.
+
+### `crawlbrulee.fetchScrapeResultFromWebhook(webhook, options?)`
+
+Given a verified `scrape.complete` body, fetch the scrape result. Returns `getScrapeResult(job_id)` for a `success` job; throws a `CrawlbruleeError` for `failed` (carrying the failure message) or `cancelled` jobs.
+
+```ts
+import { Crawlbrulee, verifyWebhookSignature, type ScrapeCompleteWebhook } from '@crawlbrulee/sdk'
+
+const crawlbrulee = Crawlbrulee.fromEnv()
+
+// Express / edge handler — read the RAW body, verify, then act.
+app.post('/webhooks/crawlbrulee', async (req, res) => {
+  const result = await verifyWebhookSignature({
+    payload: req.rawBody,
+    headers: req.headers,
+    secret: process.env.CRAWLBRULEE_WEBHOOK_SECRET!,
+  })
+  if (!result.verified) return res.status(400).end()
+
+  const webhook = JSON.parse(req.rawBody) as ScrapeCompleteWebhook
+  const page = await crawlbrulee.fetchScrapeResultFromWebhook(webhook)
+  console.log(page.markdown)
+
+  res.status(200).end()
+})
+```
+
+Always verify the signature **before** parsing or trusting the body. The `X-Cwbl-Event-Id` header (also `webhook.event_id`) is a stable id you can use to de-duplicate deliveries.
+
+---
+
 ## Errors
 
 Every failure raised by the SDK extends [`CrawlbruleeError`](src/errors.ts). Typed subclasses are exported for the most actionable cases:

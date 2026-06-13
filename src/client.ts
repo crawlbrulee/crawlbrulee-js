@@ -6,6 +6,7 @@ import type {
   AsyncScrapeResponse,
   MapRequest,
   MapResponse,
+  ScrapeCompleteWebhook,
   ScrapeRequest,
   ScrapeResponse,
   UsageResponse,
@@ -158,6 +159,61 @@ export class Crawlbrulee {
   getScrapeResult(jobId: string, options?: RequestOptions): Promise<ScrapeResponse> {
     assertNonEmptyJobId(jobId)
     return this.http.get<ScrapeResponse>(`/api/scrape/result/${encodeURIComponent(jobId)}`, options)
+  }
+
+  /**
+   * Fetch the scrape result referenced by a `scrape.complete` webhook body.
+   *
+   * Always verify the webhook signature with `verifyWebhookSignature` before
+   * acting on it; this method trusts the parsed body it is handed.
+   *
+   * Behavior by `data.status`:
+   * - `success` — delegates to {@link Crawlbrulee.getScrapeResult} for the
+   *   webhook's `job_id` and returns the parsed result.
+   * - `failed` — throws a {@link CrawlbruleeError} carrying `data.error`
+   *   (`errorName: 'job_failed'`); there is no result to fetch.
+   * - `cancelled` — throws a {@link CrawlbruleeError}
+   *   (`errorName: 'client_closed_request'`).
+   *
+   * A non-`scrape.complete` envelope throws a {@link CrawlbruleeError}
+   * defensively. Any HTTP error from the underlying fetch propagates as the
+   * usual typed `CrawlbruleeError` subclass.
+   */
+  async fetchScrapeResultFromWebhook(
+    webhook: ScrapeCompleteWebhook,
+    options?: RequestOptions
+  ): Promise<ScrapeResponse> {
+    if (webhook?.event !== 'scrape.complete') {
+      throw new CrawlbruleeError(
+        `Expected a 'scrape.complete' webhook but received '${String(webhook?.event)}'.`,
+        { status: 0, errorName: 'validation_error' }
+      )
+    }
+
+    const { job_id: jobId, status, error } = webhook.data
+
+    switch (status) {
+      case 'success':
+        return this.getScrapeResult(jobId, options)
+
+      case 'failed':
+        throw new CrawlbruleeError(error ?? `Async scrape job ${jobId} failed.`, {
+          status: 0,
+          errorName: 'job_failed',
+        })
+
+      case 'cancelled':
+        throw new CrawlbruleeError(`Async scrape job ${jobId} was cancelled.`, {
+          status: 0,
+          errorName: 'client_closed_request',
+        })
+
+      default:
+        throw new CrawlbruleeError(
+          `Async scrape webhook for job ${jobId} carried an unexpected status '${String(status)}'.`,
+          { status: 0, errorName: 'validation_error' }
+        )
+    }
   }
 
   /**

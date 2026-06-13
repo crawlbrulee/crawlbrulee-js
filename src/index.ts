@@ -32,4 +32,18 @@ export {
 
 export { DEFAULT_BASE_URL, DEFAULT_REQUEST_TIMEOUT_MS, ENV_API_KEY } from './config.js'
 
+export {
+  DEFAULT_WEBHOOK_TOLERANCE_SECONDS,
+  WEBHOOK_EVENT_ID_HEADER,
+  WEBHOOK_SIGNATURE_HEADER,
+  WEBHOOK_SIGNATURE_ROTATED_HEADER,
+  verifyWebhookSignature,
+} from './webhooks.js'
+export type {
+  VerifyWebhookSignatureOptions,
+  WebhookSignatureSource,
+  WebhookVerificationFailureReason,
+  WebhookVerificationResult,
+} from './webhooks.js'
+
 export * from './types/index.js'
