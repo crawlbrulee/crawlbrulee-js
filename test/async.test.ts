@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { CrawlbruleeError } from '../src/index.js'
+import type { AsyncScrapeRequest, AsyncScrapeWebhook } from '../src/index.js'
 
 import { buildClient, createFetchQueue, jsonResponse, lastCallOf } from './helpers.js'
 
@@ -16,6 +17,73 @@ describe('Crawlbrulee — async scrape lifecycle', () => {
     expect(url).toBe('https://api.test.example/api/scrape/async')
     expect(init.method).toBe('POST')
     expect(res.job_id).toBe('job-123')
+  })
+
+  it('scrapeAsync sends webhook.url and webhook.metadata in the POST body', async () => {
+    const q = createFetchQueue()
+    q.enqueue(jsonResponse({ job_id: 'job-wh' }, 202))
+    const client = buildClient(q.fetch)
+
+    await client.scrapeAsync({
+      url: 'https://example.com',
+      webhook: {
+        url: 'https://hooks.example.com/crawlbrulee',
+        metadata: { tenant: 'acme', batch: 7 },
+      },
+    })
+
+    const body = JSON.parse(lastCallOf(q.mock).init.body as string)
+    expect(body).toEqual({
+      url: 'https://example.com',
+      webhook: {
+        url: 'https://hooks.example.com/crawlbrulee',
+        metadata: { tenant: 'acme', batch: 7 },
+      },
+    })
+  })
+
+  it('scrapeAsync sends webhook with only a url when metadata is omitted', async () => {
+    const q = createFetchQueue()
+    q.enqueue(jsonResponse({ job_id: 'job-wh2' }, 202))
+    const client = buildClient(q.fetch)
+
+    await client.scrapeAsync({
+      url: 'https://example.com',
+      webhook: { url: 'https://hooks.example.com/crawlbrulee' },
+    })
+
+    const body = JSON.parse(lastCallOf(q.mock).init.body as string)
+    expect(body.webhook).toEqual({ url: 'https://hooks.example.com/crawlbrulee' })
+    expect(body.webhook).not.toHaveProperty('metadata')
+  })
+
+  it('scrapeAsync omits the webhook field entirely when no webhook is given', async () => {
+    const q = createFetchQueue()
+    q.enqueue(jsonResponse({ job_id: 'job-nowh' }, 202))
+    const client = buildClient(q.fetch)
+
+    await client.scrapeAsync({ url: 'https://example.com', require_js: true })
+
+    const body = JSON.parse(lastCallOf(q.mock).init.body as string)
+    expect(body).not.toHaveProperty('webhook')
+    expect(body).toEqual({ url: 'https://example.com', require_js: true })
+  })
+
+  it('AsyncScrapeRequest types compile with the webhook field', () => {
+    // Compile-time guard: AsyncScrapeRequest extends ScrapeRequest with an
+    // optional webhook, and AsyncScrapeWebhook carries url + optional metadata.
+    const webhook = {
+      url: 'https://hooks.example.com/crawlbrulee',
+      metadata: { ref: 'abc' },
+    } satisfies AsyncScrapeWebhook
+
+    const request = {
+      url: 'https://example.com',
+      extract: { markdown: true },
+      webhook,
+    } satisfies AsyncScrapeRequest
+
+    expect(request.webhook?.url).toBe('https://hooks.example.com/crawlbrulee')
   })
 
   it('getScrapeStatus url-encodes the jobId', async () => {

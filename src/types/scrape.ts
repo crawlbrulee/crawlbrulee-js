@@ -72,6 +72,42 @@ export interface ScrapeRequest {
   location?: ScrapeLocation
 }
 
+/**
+ * Per-job completion webhook, attached when submitting an ASYNC scrape via
+ * {@link Crawlbrulee.scrapeAsync}. Async-only: the synchronous `scrape()`
+ * response IS the notification, so {@link ScrapeRequest} deliberately omits
+ * this field and the sync `/api/scrape` endpoint rejects it.
+ *
+ * Configure the signing secret used for deliveries in the dashboard
+ * (Account → Webhooks) — there is no per-request secret.
+ */
+export interface AsyncScrapeWebhook {
+  /**
+   * Endpoint that receives a single signed `POST` when the job reaches a
+   * terminal state. Must be an `http`/`https` URL (HTTPS is required in
+   * production) of at most 2048 characters. The body is a
+   * `scrape.complete` envelope signed with your organization webhook secret
+   * on the `X-Cwbl-Signature` header — verify it with `verifyWebhookSignature`.
+   */
+  url: string
+  /**
+   * Opaque correlation object echoed verbatim in the webhook payload's
+   * `data.metadata`. Must serialize to at most 2048 bytes (UTF-8 JSON). Use it
+   * to route deliveries without keeping your own `job_id` mapping.
+   */
+  metadata?: Record<string, unknown>
+}
+
+/**
+ * Request body for `POST /api/scrape/async`: a {@link ScrapeRequest} plus an
+ * optional per-job completion {@link AsyncScrapeWebhook}. The `webhook` field
+ * is async-only and is not accepted by the synchronous `scrape()` endpoint.
+ */
+export interface AsyncScrapeRequest extends ScrapeRequest {
+  /** Optional completion webhook delivered when this job finishes. */
+  webhook?: AsyncScrapeWebhook
+}
+
 /** Viewport metadata returned alongside a captured screenshot. */
 export interface ScreenshotViewportInfo {
   width: number

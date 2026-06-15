@@ -3,6 +3,7 @@ import { CrawlbruleeError } from './errors.js'
 import { HttpClient, type RequestOptions } from './http.js'
 import type {
   AsyncJobStatusResponse,
+  AsyncScrapeRequest,
   AsyncScrapeResponse,
   MapRequest,
   MapResponse,
@@ -137,8 +138,12 @@ export class Crawlbrulee {
    * Submit an asynchronous scrape job and return its `job_id`. Poll the job
    * with {@link Crawlbrulee.getScrapeStatus} or wait for completion with
    * {@link Crawlbrulee.waitForScrape}.
+   *
+   * Pass an optional `webhook` to have the API deliver a signed
+   * `scrape.complete` `POST` to your endpoint when the job finishes (see
+   * {@link AsyncScrapeWebhook}). This field is async-only.
    */
-  scrapeAsync(request: ScrapeRequest, options?: RequestOptions): Promise<AsyncScrapeResponse> {
+  scrapeAsync(request: AsyncScrapeRequest, options?: RequestOptions): Promise<AsyncScrapeResponse> {
     return this.http.post<AsyncScrapeResponse>('/api/scrape/async', request, options)
   }
 

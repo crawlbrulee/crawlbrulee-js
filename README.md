@@ -7,7 +7,7 @@ The official TypeScript / JavaScript SDK for the [crawlbrulee](https://crawlbrul
 - Zero runtime dependencies — just `fetch`.
 - Works on Node.js 22+, modern Deno, Bun, and runtimes where `fetch` is available.
 
-> **Status:** v0.2.0 (beta). API surface is stabilizing — expect minor breaking changes between 0.x releases.
+> **Status:** v0.3.0 (beta). API surface is stabilizing — expect minor breaking changes between 0.x releases.
 
 ---
 
@@ -158,6 +158,25 @@ Return the organization name and identifying details of the API token used to au
 ## Webhooks
 
 When an async scrape job finishes, crawlbrulee can `POST` a `scrape.complete` webhook to your configured endpoint. The SDK ships two helpers for it.
+
+### Triggering a webhook (`scrapeAsync`)
+
+Pass a `webhook` to `scrapeAsync` to have the API deliver a single signed `scrape.complete` `POST` when the job reaches a terminal state. This is **async-only** — the synchronous `scrape()` response _is_ the notification, so it does not accept a `webhook`.
+
+```ts
+const { job_id } = await crawlbrulee.scrapeAsync({
+  url: 'https://example.com',
+  webhook: {
+    // Endpoint that receives the signed POST. HTTPS is required in production.
+    url: 'https://hooks.example.com/crawlbrulee',
+    // Opaque correlation object — echoed back verbatim in the webhook payload's
+    // `data.metadata`. Must serialize to at most 2048 bytes.
+    metadata: { tenant: 'acme', batch_id: 7 },
+  },
+})
+```
+
+Configure the signing secret used for these deliveries in the dashboard (**Account → Webhooks**); there is no per-request secret. When the delivery arrives, verify it with [`verifyWebhookSignature`](#verifywebhooksignatureoptions) and read your `metadata` back from `webhook.data.metadata`. See [`AsyncScrapeWebhook`](src/types/scrape.ts) for the full field documentation.
 
 ### `verifyWebhookSignature(options)`
 
