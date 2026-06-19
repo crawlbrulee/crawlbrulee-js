@@ -8,7 +8,8 @@ describe('Crawlbrulee.map', () => {
     q.enqueue(
       jsonResponse({
         links: [{ url: 'https://example.com/' }, { url: 'https://example.com/about' }],
-        meta: {
+        response_meta: {
+          usage: { credits: 1, proxy: 'basic', cache_hit: false },
           pagination: { page: 1, limit: 100, total: 2, total_pages: 1, has_more: false },
           truncation: {
             storage_capped: false,
@@ -38,6 +39,7 @@ describe('Crawlbrulee.map', () => {
       types: { internal: true, external: false, internal_subdomains: false },
     })
     expect(res.links).toHaveLength(2)
-    expect(res.meta.pagination.has_more).toBe(false)
+    expect(res.response_meta.pagination.has_more).toBe(false)
+    expect(res.response_meta.usage).toEqual({ credits: 1, proxy: 'basic', cache_hit: false })
   })
 })

@@ -10,10 +10,19 @@
  *   "event_id": "evt_…",
  *   "timestamp": "2026-06-13T12:00:00.000Z",
  *   "event": "scrape.complete",
- *   "data": { "job_id": "job_…", "status": "success", "url": "https://…", "completed_at": "…" }
+ *   "data": {
+ *     "job_id": "job_…",
+ *     "status": "success",
+ *     "url": "https://…",
+ *     "completed_at": "…",
+ *     "metadata": { "tenant": "acme" },
+ *     "response_meta": { "usage": { "credits": 1, "proxy": "basic", "cache_hit": false } }
+ *   }
  * }
  * ```
  */
+
+import type { ResponseMeta } from './common.js'
 
 /** Terminal status carried by a {@link ScrapeCompleteWebhook}. */
 export type ScrapeWebhookStatus = 'success' | 'failed' | 'cancelled'
@@ -30,8 +39,17 @@ export interface ScrapeCompleteWebhookData {
   completed_at: string
   /** Failure message — present only when `status === 'failed'`. */
   error?: string
-  /** Correlation data echoed back from the original scrape request, if any. */
+  /**
+   * Correlation data echoed back from the original scrape request's
+   * `webhook.metadata`, if any.
+   */
   metadata?: Record<string, unknown>
+  /**
+   * Response envelope metadata — `usage` (credits charged, resolved proxy tier,
+   * and whether the result was a cache hit). Present only on `status: 'success'`
+   * deliveries; omitted for `failed` / `cancelled` (no usage was charged).
+   */
+  response_meta?: ResponseMeta
 }
 
 /**

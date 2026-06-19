@@ -1,4 +1,4 @@
-import type { ProxyTier } from './common.js'
+import type { ProxyTier, ResponseMeta } from './common.js'
 
 /** Filter which link types appear in the map result. */
 export interface MapTypes {
@@ -80,13 +80,19 @@ export interface MapTruncation {
   total_detected_before_storage_cap: number
 }
 
+/**
+ * Response envelope for a map result: the shared {@link ResponseMeta} (`usage`)
+ * plus the map-specific `pagination` and `truncation`.
+ */
+export interface MapResponseMeta extends ResponseMeta {
+  pagination: MapPagination
+  truncation: MapTruncation
+}
+
 /** Success response from `POST /api/map`. */
 export interface MapResponse {
   /** The current page of discovered URLs. */
   links: MapLinkItem[]
-  /** Pagination + truncation metadata for the result set. */
-  meta: {
-    pagination: MapPagination
-    truncation: MapTruncation
-  }
+  /** Usage, pagination, and truncation metadata for the result set. */
+  response_meta: MapResponseMeta
 }

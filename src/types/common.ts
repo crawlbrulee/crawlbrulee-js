@@ -13,6 +13,41 @@
  */
 export type ProxyTier = 'basic' | 'advanced' | 'auto' | 'none'
 
+/**
+ * Proxy tier the server actually used to route a fetch, as reported back in
+ * {@link Usage.proxy}. Unlike the request-side {@link ProxyTier}, this never
+ * includes `auto` — when a request asks for `auto`, the server resolves it to a
+ * concrete tier and echoes the resolved value here.
+ */
+export type ResolvedProxyTier = 'none' | 'basic' | 'advanced'
+
+/**
+ * Usage accounting for a single billable operation, returned on the response
+ * envelope of scrape, map, and async-status (when terminal). All crawlbrulee
+ * responses report this on `response_meta.usage`.
+ */
+export interface Usage {
+  /**
+   * Credits charged for this operation. `0` on a cache hit (no fresh fetch was
+   * performed).
+   */
+  credits: number
+  /** The proxy tier the server resolved and used (never `auto`). */
+  proxy: ResolvedProxyTier
+  /** Whether the result was served from cache (no fresh fetch). */
+  cache_hit: boolean
+}
+
+/**
+ * Response envelope `response_meta` carried by scrape responses and async-status
+ * responses (terminal state only). Currently exposes {@link Usage}; map
+ * responses extend this shape with `pagination` + `truncation`.
+ */
+export interface ResponseMeta {
+  /** Usage accounting for the operation. */
+  usage: Usage
+}
+
 /** Screenshot capture mode: visible viewport or the full scrollable page. */
 export type ScreenshotType = 'viewport' | 'full_page'
 

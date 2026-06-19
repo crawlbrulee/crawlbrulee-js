@@ -1,3 +1,5 @@
+import type { ResponseMeta } from './common.js'
+
 /** Job lifecycle states for an async scrape. */
 export type AsyncJobStatus = 'pending' | 'running' | 'done' | 'failed'
 
@@ -25,4 +27,10 @@ export interface AsyncJobStatusResponse {
   createdAt: string
   /** Error message if the job ended in `failed`. */
   error?: string
+  /**
+   * Response envelope metadata — present only when the job has reached the
+   * terminal `done` state. Carries `usage` (credits charged, resolved proxy
+   * tier, and whether the result was a cache hit).
+   */
+  response_meta?: ResponseMeta
 }

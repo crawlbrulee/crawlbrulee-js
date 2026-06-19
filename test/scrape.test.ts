@@ -10,6 +10,7 @@ describe('Crawlbrulee.scrape', () => {
         url: 'https://example.com/',
         markdown: '# Hello',
         metadata: { title: 'Example' },
+        response_meta: { usage: { credits: 1, proxy: 'advanced', cache_hit: false } },
       })
     )
     const client = buildClient(q.fetch)
@@ -31,6 +32,7 @@ describe('Crawlbrulee.scrape', () => {
     })
     expect(res.markdown).toBe('# Hello')
     expect(res.metadata?.title).toBe('Example')
+    expect(res.response_meta.usage).toEqual({ credits: 1, proxy: 'advanced', cache_hit: false })
   })
 
   it('supports the full screenshot shape (viewport + actions)', async () => {

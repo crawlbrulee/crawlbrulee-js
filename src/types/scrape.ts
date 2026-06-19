@@ -1,4 +1,4 @@
-import type { ProxyTier, ScreenshotRequest, ScreenshotType } from './common.js'
+import type { ProxyTier, ResponseMeta, ScreenshotRequest, ScreenshotType } from './common.js'
 
 /**
  * Which content formats to extract from the scraped page. Every field is
@@ -232,4 +232,9 @@ export interface ScrapeResponse {
    * omit warnings.
    */
   warnings?: string[]
+  /**
+   * Response envelope metadata. Carries `usage` (credits charged, resolved
+   * proxy tier, and whether the result was a cache hit).
+   */
+  response_meta: ResponseMeta
 }

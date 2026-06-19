@@ -37,6 +37,8 @@ const page = await crawlbrulee.scrape({
 
 console.log(page.markdown)
 console.log(page.links?.length, 'links found')
+console.log(page.metadata?.title) // structured <head> metadata
+console.log(page.response_meta.usage.credits, 'credits charged') // usage accounting
 ```
 
 ### Configuration
@@ -91,6 +93,16 @@ const page = await crawlbrulee.scrape({
 })
 ```
 
+The response carries the extracted content alongside structured `metadata` (the parsed `<head>` tags — `title`, `description`, OG/Twitter fields, …) and a `response_meta` envelope:
+
+```ts
+page.metadata?.title // structured <head> metadata (when extract.metadata, on by default)
+
+page.response_meta.usage.credits // credits charged — 0 on a cache hit
+page.response_meta.usage.proxy // the resolved proxy tier actually used: 'none' | 'basic' | 'advanced' (never 'auto')
+page.response_meta.usage.cache_hit // true when the result was served from cache
+```
+
 See [`ScrapeRequest`](src/types/scrape.ts) and [`ScrapeResponse`](src/types/scrape.ts) for every field, with inline documentation.
 
 #### `crawlbrulee.scrapeAsync(request, options?)`
@@ -140,7 +152,8 @@ const result = await crawlbrulee.map({
   limit: 1_000,
 })
 
-console.log(result.links.length, 'urls on page 1 of', result.meta.pagination.total_pages)
+console.log(result.links.length, 'urls on page 1 of', result.response_meta.pagination.total_pages)
+console.log(result.response_meta.usage.credits, 'credits charged') // usage accounting, alongside pagination + truncation
 ```
 
 ### Account
@@ -176,7 +189,7 @@ const { job_id } = await crawlbrulee.scrapeAsync({
 })
 ```
 
-Configure the signing secret used for these deliveries in the dashboard (**Account → Webhooks**); there is no per-request secret. When the delivery arrives, verify it with [`verifyWebhookSignature`](#verifywebhooksignatureoptions) and read your `metadata` back from `webhook.data.metadata`. See [`AsyncScrapeWebhook`](src/types/scrape.ts) for the full field documentation.
+Configure the signing secret used for these deliveries in the dashboard (**Account → Webhooks**); there is no per-request secret. When the delivery arrives, verify it with [`verifyWebhookSignature`](#verifywebhooksignatureoptions) and read your `metadata` back from `webhook.data.metadata`. The delivery also carries usage accounting on `webhook.data.response_meta.usage` (`credits`, `proxy`, `cache_hit`). See [`AsyncScrapeWebhook`](src/types/scrape.ts) for the full field documentation.
 
 ### `verifyWebhookSignature(options)`
 
