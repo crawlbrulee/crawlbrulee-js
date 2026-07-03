@@ -4,7 +4,7 @@ All notable changes to `@crawlbrulee/sdk` are documented here.
 
 This project follows [Semantic Versioning](https://semver.org). While on `0.x`, minor versions may include breaking changes.
 
-## Unreleased
+## 0.4.0 (2026-07-03)
 
 ### Added
 

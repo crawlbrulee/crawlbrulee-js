@@ -7,7 +7,7 @@ The official TypeScript / JavaScript SDK for the [crawlbrulee](https://crawlbrul
 - Zero runtime dependencies — just `fetch`.
 - Works on Node.js 22+, modern Deno, Bun, and runtimes where `fetch` is available.
 
-> **Status:** v0.3.0 (beta). API surface is stabilizing — expect minor breaking changes between 0.x releases.
+> **Status:** v0.4.0 (beta). API surface is stabilizing — expect minor breaking changes between 0.x releases.
 
 ---
 

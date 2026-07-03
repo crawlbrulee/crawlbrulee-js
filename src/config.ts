@@ -12,4 +12,4 @@ export const DEFAULT_REQUEST_TIMEOUT_MS = 60_000
 export const ENV_API_KEY = 'CRAWLBRULEE_API_KEY'
 
 /** Identifies the SDK in the `User-Agent` header. Kept in one place for easy bumping. */
-export const USER_AGENT = '@crawlbrulee/sdk/0.1.2 (node)'
+export const USER_AGENT = '@crawlbrulee/sdk/0.4.0 (node)'
