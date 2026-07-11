@@ -1,4 +1,4 @@
-import { USER_AGENT } from './config.js'
+import { DEFAULT_REQUEST_TIMEOUT_MS, USER_AGENT } from './config.js'
 import { TransportError, createApiError, type CrawlbruleeError } from './errors.js'
 import { CwblInstrumentation, type FetchLike } from './instrumentation.js'
 import type { ApiErrorResponse } from './types/common.js'
@@ -74,7 +74,7 @@ export class HttpClient {
     this.baseUrl = stripTrailingSlash(options.baseUrl ?? CwblInstrumentation.getBaseUrl())
     this.apiKey = options.apiKey
     this.fetch = CwblInstrumentation.getFetch()
-    this.timeoutMs = options.timeoutMs ?? 0
+    this.timeoutMs = options.timeoutMs ?? DEFAULT_REQUEST_TIMEOUT_MS
   }
 
   /** Send a `GET` request and parse the response as `T`. */

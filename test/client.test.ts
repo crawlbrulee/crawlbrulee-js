@@ -1,10 +1,20 @@
 import { describe, expect, it } from 'vitest'
 
-import { Crawlbrulee, CrawlbruleeError, DEFAULT_BASE_URL, ENV_API_KEY } from '../src/index.js'
+import {
+  Crawlbrulee,
+  CrawlbruleeError,
+  DEFAULT_BASE_URL,
+  DEFAULT_REQUEST_TIMEOUT_MS,
+  ENV_API_KEY,
+} from '../src/index.js'
 
 import { buildClient, createFetchQueue, jsonResponse, lastCallOf } from './helpers.js'
 
 describe('Crawlbrulee — construction', () => {
+  it('exports the no-timeout request default', () => {
+    expect(DEFAULT_REQUEST_TIMEOUT_MS).toBe(0)
+  })
+
   it('throws when apiKey is missing from the options', () => {
     expect(() => new Crawlbrulee({ apiKey: undefined as unknown as string })).toThrow(
       CrawlbruleeError

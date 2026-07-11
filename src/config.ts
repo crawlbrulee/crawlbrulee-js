@@ -5,8 +5,8 @@
  */
 export const DEFAULT_BASE_URL = 'https://api.crawlbrulee.com'
 
-/** Default request timeout (60 s) when the caller doesn't specify one. */
-export const DEFAULT_REQUEST_TIMEOUT_MS = 60_000
+/** Default request timeout when the caller doesn't specify one (0 disables the timeout). */
+export const DEFAULT_REQUEST_TIMEOUT_MS = 0
 
 /** Environment variable read by `Crawlbrulee.fromEnv()` to source the API key. */
 export const ENV_API_KEY = 'CRAWLBRULEE_API_KEY'
