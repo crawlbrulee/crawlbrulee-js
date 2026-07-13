@@ -9,22 +9,14 @@ export interface AsyncScrapeResponse {
   job_id: string
 }
 
-/**
- * Response body of `GET /api/scrape/status/:jobId`.
- *
- * Note: this response uses camelCase field names (`jobId`, `createdAt`) while
- * most other crawlbrulee responses use snake_case (e.g. `job_id` on
- * {@link AsyncScrapeResponse}, `total_credits` on `UsageResponse`). The SDK
- * mirrors the wire format faithfully — if the inconsistency trips you up,
- * destructure with explicit names.
- */
+/** Response body of `GET /api/scrape/status/:jobId`. */
 export interface AsyncJobStatusResponse {
   /** The job identifier. */
-  jobId: string
+  job_id: string
   /** Current state of the job. */
   status: AsyncJobStatus
   /** ISO-8601 UTC timestamp when the job was created. */
-  createdAt: string
+  created_at: string
   /** Error message if the job ended in `failed`. */
   error?: string
   /**

@@ -38,6 +38,6 @@ export interface WhoamiResponse {
   organization_name: string
   /** User-assigned name of the API token. */
   token_name: string
-  /** Truncated preview of the API token (e.g. `cble_…xyz`). Safe to display. */
+  /** Truncated preview of the API token (e.g. `cwbl_…xyz`). Safe to display. */
   token_preview: string
 }

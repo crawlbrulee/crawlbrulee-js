@@ -29,7 +29,10 @@ export interface MapLocation {
 export interface MapRequest {
   /** The website URL to map. */
   url: string
-  /** Proxy tier to use for fetching. Defaults to `basic`. */
+  /**
+   * Proxy tier to use for fetching. Defaults to `auto` (tries the basic tier
+   * first, escalates to advanced on failure; billed at the delivered tier).
+   */
   proxy?: ProxyTier
   /** Only use sitemap.xml — skip homepage link extraction. Default `false`. */
   sitemap_only?: boolean

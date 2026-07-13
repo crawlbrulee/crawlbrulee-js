@@ -63,7 +63,7 @@ export interface WaitForScrapeOptions extends Omit<RequestOptions, 'timeoutMs'> 
  * ```ts
  * import { Crawlbrulee } from '@crawlbrulee/sdk'
  *
- * const crawlbrulee = new Crawlbrulee({ apiKey: 'cble_…' })
+ * const crawlbrulee = new Crawlbrulee({ apiKey: 'cwbl_…' })
  * // or read CRAWLBRULEE_API_KEY from the environment:
  * const crawlbrulee = Crawlbrulee.fromEnv()
  *

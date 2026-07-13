@@ -90,9 +90,9 @@ describe('Crawlbrulee — async scrape lifecycle', () => {
     const q = createFetchQueue()
     q.enqueue(
       jsonResponse({
-        jobId: 'with space',
+        job_id: 'with space',
         status: 'pending',
-        createdAt: '2026-01-01T00:00:00.000Z',
+        created_at: '2026-01-01T00:00:00.000Z',
       })
     )
     const client = buildClient(q.fetch)
@@ -126,23 +126,23 @@ describe('Crawlbrulee.waitForScrape', () => {
     const q = createFetchQueue()
     q.enqueue(
       jsonResponse({
-        jobId: 'job-1',
+        job_id: 'job-1',
         status: 'pending',
-        createdAt: '2026-01-01T00:00:00.000Z',
+        created_at: '2026-01-01T00:00:00.000Z',
       })
     )
     q.enqueue(
       jsonResponse({
-        jobId: 'job-1',
+        job_id: 'job-1',
         status: 'running',
-        createdAt: '2026-01-01T00:00:00.000Z',
+        created_at: '2026-01-01T00:00:00.000Z',
       })
     )
     q.enqueue(
       jsonResponse({
-        jobId: 'job-1',
+        job_id: 'job-1',
         status: 'done',
-        createdAt: '2026-01-01T00:00:00.000Z',
+        created_at: '2026-01-01T00:00:00.000Z',
       })
     )
     q.enqueue(jsonResponse({ url: 'https://example.com/', markdown: '# done' }))
@@ -167,9 +167,9 @@ describe('Crawlbrulee.waitForScrape', () => {
     const q = createFetchQueue()
     q.enqueue(
       jsonResponse({
-        jobId: 'job-fail',
+        job_id: 'job-fail',
         status: 'failed',
-        createdAt: '2026-01-01T00:00:00.000Z',
+        created_at: '2026-01-01T00:00:00.000Z',
         error: 'boom',
       })
     )

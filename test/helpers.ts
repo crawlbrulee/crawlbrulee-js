@@ -75,7 +75,7 @@ export function buildClient(
   const { baseUrl = TEST_BASE_URL, ...rest } = overrides
   vi.spyOn(CwblInstrumentation, 'getFetch').mockReturnValue(fetchImpl)
   vi.spyOn(CwblInstrumentation, 'getBaseUrl').mockReturnValue(baseUrl)
-  return new Crawlbrulee({ apiKey: 'cble_test_key', ...rest })
+  return new Crawlbrulee({ apiKey: 'cwbl_test_key', ...rest })
 }
 
 /** Pull out the URL + RequestInit of a single recorded fetch call. */

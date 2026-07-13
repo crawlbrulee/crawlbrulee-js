@@ -135,9 +135,9 @@ describe('waitForScrape — unknown status + jobId validation', () => {
     const q = createFetchQueue()
     q.enqueue(
       jsonResponse({
-        jobId: 'j',
+        job_id: 'j',
         status: 'cancelled' as unknown as 'pending',
-        createdAt: '2026-01-01T00:00:00.000Z',
+        created_at: '2026-01-01T00:00:00.000Z',
       })
     )
     const client = buildClient(q.fetch)
@@ -174,9 +174,9 @@ describe('waitForScrape — deadline is checked at the top of every iteration', 
     const q = createFetchQueue()
     q.enqueue(
       jsonResponse({
-        jobId: 'j',
+        job_id: 'j',
         status: 'pending',
-        createdAt: '2026-01-01T00:00:00.000Z',
+        created_at: '2026-01-01T00:00:00.000Z',
       })
     )
     const client = buildClient(q.fetch)

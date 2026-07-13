@@ -66,7 +66,10 @@ export interface ScrapeRequest {
   require_js?: boolean
   /** CSS selectors to strip from the extracted content. */
   exclude_selectors?: string[]
-  /** Proxy tier to use for fetching. Defaults to `basic`. */
+  /**
+   * Proxy tier to use for fetching. Defaults to `auto` (tries the basic tier
+   * first, escalates to advanced on failure; billed at the delivered tier).
+   */
   proxy?: ProxyTier
   /** Optional locale + country emulation. */
   location?: ScrapeLocation

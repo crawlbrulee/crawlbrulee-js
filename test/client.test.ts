@@ -27,7 +27,7 @@ describe('Crawlbrulee — construction', () => {
 
   it('does NOT read the API key from process.env unless fromEnv() is called', () => {
     const prev = process.env[ENV_API_KEY]
-    process.env[ENV_API_KEY] = 'cble_env'
+    process.env[ENV_API_KEY] = 'cwbl_env'
     try {
       expect(() => new Crawlbrulee({ apiKey: '' })).toThrow(CrawlbruleeError)
     } finally {
@@ -37,7 +37,7 @@ describe('Crawlbrulee — construction', () => {
   })
 
   it('defaults baseUrl to the production host', () => {
-    const client = new Crawlbrulee({ apiKey: 'cble_x' })
+    const client = new Crawlbrulee({ apiKey: 'cwbl_x' })
     expect(client.baseUrl).toBe(DEFAULT_BASE_URL)
   })
 
@@ -56,7 +56,7 @@ describe('Crawlbrulee — construction', () => {
 describe('Crawlbrulee.fromEnv', () => {
   it('reads apiKey from CRAWLBRULEE_API_KEY', () => {
     const prev = process.env[ENV_API_KEY]
-    process.env[ENV_API_KEY] = 'cble_env_key'
+    process.env[ENV_API_KEY] = 'cwbl_env_key'
     try {
       const client = Crawlbrulee.fromEnv()
       expect(client.baseUrl).toBe(DEFAULT_BASE_URL)
@@ -89,7 +89,7 @@ describe('Crawlbrulee.fromEnv', () => {
 
   it('accepts overrides for non-apiKey options', () => {
     const prev = process.env[ENV_API_KEY]
-    process.env[ENV_API_KEY] = 'cble_env_key'
+    process.env[ENV_API_KEY] = 'cwbl_env_key'
     try {
       const client = Crawlbrulee.fromEnv({ timeoutMs: 5000 })
       expect(client.baseUrl).toBe(DEFAULT_BASE_URL)
@@ -112,7 +112,7 @@ describe('Crawlbrulee — request shaping', () => {
     expect(url).toBe('https://api.test.example/api/scrape')
     expect(init.method).toBe('POST')
     const headers = init.headers as Record<string, string>
-    expect(headers.authorization).toBe('Bearer cble_test_key')
+    expect(headers.authorization).toBe('Bearer cwbl_test_key')
     expect(headers['content-type']).toBe('application/json')
     expect(headers.accept).toBe('application/json')
     expect(headers['user-agent']).toMatch(/^@crawlbrulee\/sdk/)
@@ -125,7 +125,7 @@ describe('Crawlbrulee — request shaping', () => {
       jsonResponse({
         organization_name: 'Acme',
         token_name: 'prod',
-        token_preview: 'cble_…abc',
+        token_preview: 'cwbl_…abc',
       })
     )
     const client = buildClient(q.fetch)

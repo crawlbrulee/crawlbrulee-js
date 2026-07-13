@@ -9,7 +9,7 @@ describe('Crawlbrulee — account endpoints', () => {
       jsonResponse({
         organization_name: 'Acme',
         token_name: 'prod-key',
-        token_preview: 'cble_…abc',
+        token_preview: 'cwbl_…abc',
       })
     )
     const client = buildClient(q.fetch)
@@ -20,7 +20,7 @@ describe('Crawlbrulee — account endpoints', () => {
     expect(res).toEqual({
       organization_name: 'Acme',
       token_name: 'prod-key',
-      token_preview: 'cble_…abc',
+      token_preview: 'cwbl_…abc',
     })
   })
 

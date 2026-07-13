@@ -26,7 +26,7 @@ yarn add @crawlbrulee/sdk
 ```ts
 import { Crawlbrulee } from '@crawlbrulee/sdk'
 
-const crawlbrulee = new Crawlbrulee({ apiKey: 'cble_…' })
+const crawlbrulee = new Crawlbrulee({ apiKey: 'cwbl_…' })
 // or read CRAWLBRULEE_API_KEY from the environment:
 const crawlbrulee = Crawlbrulee.fromEnv()
 
@@ -261,7 +261,7 @@ Every failure raised by the SDK extends [`CrawlbruleeError`](src/errors.ts). Typ
 ```ts
 import { Crawlbrulee, RateLimitError, UsageAllocationError } from '@crawlbrulee/sdk'
 
-const crawlbrulee = new Crawlbrulee({ apiKey: 'cble_…' })
+const crawlbrulee = new Crawlbrulee({ apiKey: 'cwbl_…' })
 try {
   await crawlbrulee.scrape({ url: 'https://example.com' })
 } catch (err) {

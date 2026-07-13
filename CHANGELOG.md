@@ -4,6 +4,17 @@ All notable changes to `@crawlbrulee/sdk` are documented here.
 
 This project follows [Semantic Versioning](https://semver.org). While on `0.x`, minor versions may include breaking changes.
 
+## 0.5.0 (2026-07-13)
+
+### Fixed
+
+- **Async status response field names now match the API (`job_id`, `created_at`).** `AsyncJobStatusResponse` previously declared the pre-June camelCase wire format (`jobId`, `createdAt`), leaving those fields `undefined` against the live snake_case API. The SDK now mirrors the snake_case wire format 1:1.
+
+### Changed (docs)
+
+- Default proxy tier is now `auto` (tries the basic tier first, escalates to advanced on failure; billed at the delivered tier). Docstring-only — the SDK still omits the field when unset and lets the server apply the default.
+- API token prefix is now `cwbl_` (was `cble_`) in all docstring and README examples.
+
 ## 0.4.0 (2026-07-03)
 
 ### Added
