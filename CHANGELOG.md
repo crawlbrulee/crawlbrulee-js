@@ -4,6 +4,19 @@ All notable changes to `@crawlbrulee/sdk` are documented here.
 
 This project follows [Semantic Versioning](https://semver.org). While on `0.x`, minor versions may include breaking changes.
 
+## 0.6.0 (2026-07-14)
+
+### Changed
+
+- **Screenshots.** In the rare case a screenshot can't be captured, the rest of your requested outputs are still returned and the `screenshot` field is simply left out. `ScrapeResponse.screenshot` stays optional (`ScreenshotResult | undefined`); guard with `page.screenshot?.url`.
+- **Screenshot custom viewport is now bounded.** `viewport.width`/`height` are integers in `[16, 10000]` and `device_scale_factor` is in `[1, 4]` (fractional allowed, defaults to 1). Out-of-range values are rejected with a `400`. Docstring-only — the SDK forwards the viewport unchanged.
+- **`extract.images` output.** Image URLs now preserve their query string and resolve document-relative `src`s against the full page URL (browser parity), matching the links extractor. Visible output change for consumers; no type change.
+
+### Changed (docs)
+
+- Documented per-plan rate limits with separate sync/async buckets (Free 50/100, Starter 100/300, Pro 350/1000, Advanced 1000/3000). Sync `scrape` and `map` share the sync bucket; async submit has its own.
+- Clarified that `proxy` defaults to `auto` (starts at basic, escalates to advanced on failure; billed at the delivered tier) in the `ProxyTier` docstring.
+
 ## 0.5.0 (2026-07-13)
 
 ### Fixed

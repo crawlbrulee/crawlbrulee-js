@@ -5,9 +5,10 @@
 /**
  * Proxy tier used to route the fetch.
  *
- * - `basic` — datacenter proxy, lowest cost (default).
+ * - `basic` — datacenter proxy, lowest cost.
  * - `advanced` — residential proxy, higher success rate on protected sites.
- * - `auto` — let crawlbrulee pick the right tier per target.
+ * - `auto` — start at the basic tier and escalate to advanced on failure;
+ *   billed at the delivered tier. This is the default when `proxy` is omitted.
  * - `none` — skip the proxy entirely. Rejected in production; available on
  *   staging only as a debug/perf-test toggle.
  */
@@ -98,11 +99,14 @@ export type ScreenshotAfterAction = ScreenshotSliceAction
 
 /** Custom browser viewport dimensions used during a screenshot capture. */
 export interface ScreenshotViewport {
-  /** Viewport width in pixels. */
+  /** Viewport width in pixels. Integer in `[16, 10000]`; out-of-range values are rejected with a 400. */
   width: number
-  /** Viewport height in pixels. */
+  /** Viewport height in pixels. Integer in `[16, 10000]`; out-of-range values are rejected with a 400. */
   height: number
-  /** Device pixel ratio (e.g. 2 for retina). Defaults to 1 server-side. */
+  /**
+   * Device pixel ratio (e.g. 2 for retina). Fractional values are allowed;
+   * must be in `[1, 4]`. Defaults to 1 server-side.
+   */
   device_scale_factor?: number
 }
 

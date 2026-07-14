@@ -7,7 +7,7 @@ The official TypeScript / JavaScript SDK for the [crawlbrulee](https://crawlbrul
 - Zero runtime dependencies — just `fetch`.
 - Works on Node.js 22+, modern Deno, Bun, and runtimes where `fetch` is available.
 
-> **Status:** v0.4.0 (beta). API surface is stabilizing — expect minor breaking changes between 0.x releases.
+> **Status:** v0.6.0 (beta). API surface is stabilizing — expect minor breaking changes between 0.x releases.
 
 ---
 
@@ -102,6 +102,12 @@ page.response_meta.usage.credits // credits charged — 0 on a cache hit
 page.response_meta.usage.proxy // the resolved proxy tier actually used: 'none' | 'basic' | 'advanced' (never 'auto')
 page.response_meta.usage.cache_hit // true when the result was served from cache
 ```
+
+Notes:
+
+- **`proxy` defaults to `auto`** when omitted — it starts at the basic tier and escalates to advanced on failure, billed at the delivered tier. Pass `'basic'`, `'advanced'`, or `'none'` to pin a tier.
+- **Screenshots.** In rare cases a screenshot can't be captured; when that happens the rest of your requested outputs are still returned and the `screenshot` field is simply left out, so guard for it (`page.screenshot?.url`). Custom `viewport.width`/`height` are integers in `[16, 10000]` and `device_scale_factor` is in `[1, 4]`; out-of-range values are rejected with a `400`.
+- **`extract.images`** URLs preserve their query string and resolve document-relative `src`s against the full page URL (browser parity) — the same rules as `links`.
 
 See [`ScrapeRequest`](src/types/scrape.ts) and [`ScrapeResponse`](src/types/scrape.ts) for every field, with inline documentation.
 
@@ -277,6 +283,19 @@ try {
 ```
 
 For exhaustive branching, switch on `err.errorName` — the literal-typed union is exported as `ApiErrorName`.
+
+### Rate limits
+
+Limits are per-plan, with **separate buckets for sync and async** (requests per minute). Synchronous `scrape()` **and** `map()` count against the sync bucket; `scrapeAsync()` submissions have their own bucket.
+
+| Plan     | Sync (rpm) | Async (rpm) |
+| -------- | ---------- | ----------- |
+| Free     | 50         | 100         |
+| Starter  | 100        | 300         |
+| Pro      | 350        | 1000        |
+| Advanced | 1000       | 3000        |
+
+When you exceed a bucket the API returns `429` and the SDK throws a `RateLimitError` — read `retryAfterMs` to back off.
 
 ---
 

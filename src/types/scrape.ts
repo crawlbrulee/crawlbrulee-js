@@ -16,7 +16,11 @@ export interface ScrapeExtract {
   raw_html?: boolean
   /** Extract all links found on the page. Default `false`. */
   links?: boolean
-  /** Extract all inline images found on the page. Default `false`. */
+  /**
+   * Extract all inline images found on the page. Default `false`. Image URLs
+   * preserve their query string, and document-relative `src`s are resolved
+   * against the full page URL (browser parity) — same rules as `links`.
+   */
   images?: boolean
   /** Capture a screenshot. Omit to skip; set to a `ScreenshotRequest` to enable. */
   screenshot?: ScreenshotRequest
@@ -157,7 +161,10 @@ export interface ScreenshotResult {
 
 /** A single inline image discovered on the page. */
 export interface PageInlineImage {
-  /** Absolute URL of the image. */
+  /**
+   * Absolute URL of the image, query string preserved. Document-relative
+   * `src`s are resolved against the full page URL (browser parity).
+   */
   url: string
   /** Alt text of the image, or `null` if not set. */
   alt: string | null
@@ -224,7 +231,12 @@ export interface ScrapeResponse {
   images?: PageInlineImage[]
   /** Links discovered on the page (when `extract.links`). */
   links?: PageLink[]
-  /** Captured screenshot (when `extract.screenshot`). */
+  /**
+   * Captured screenshot (when `extract.screenshot`). In rare cases a screenshot
+   * can't be captured; when that happens the rest of your requested outputs are
+   * still returned and this field is simply left out (so it reads back as
+   * `undefined`). Guard with `page.screenshot?.url`.
+   */
   screenshot?: ScreenshotResult
   /** Extracted page metadata (when `extract.metadata`, on by default). */
   metadata?: ScrapeMetadata
