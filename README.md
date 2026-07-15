@@ -16,7 +16,7 @@ this readme covers the sdk itself — the client, the types, and the js-side erg
 the api behaves — endpoints, parameters, and error semantics — please see our
 [api docs](https://crawlbrulee.com/docs).
 
-> **status:** v0.6.0 (beta). the api surface is stabilizing — expect minor breaking changes between 0.x releases.
+> **status:** v0.7.0 (beta). the api surface is stabilizing — expect minor breaking changes between 0.x releases.
 
 **get a free api key** → [dashboard.crawlbrulee.com](https://dashboard.crawlbrulee.com)
 
@@ -64,23 +64,23 @@ const crawlbrulee = new Crawlbrulee({ apiKey: 'cwbl_…' })
 const crawlbrulee = Crawlbrulee.fromEnv()
 ```
 
-`Crawlbrulee.fromEnv(overrides?)` reads the key from `CRAWLBRULEE_API_KEY` and forwards any other option through 
-`overrides` (e.g. `Crawlbrulee.fromEnv({ timeoutMs: 30_000 })`). it throws if the variable is unset or empty. keys are 
+`Crawlbrulee.fromEnv(overrides?)` reads the key from `CRAWLBRULEE_API_KEY` and forwards any other option through
+`overrides` (e.g. `Crawlbrulee.fromEnv({ timeoutMs: 30_000 })`). it throws if the variable is unset or empty. keys are
 minted in the dashboard; see [authentication](https://crawlbrulee.com/docs/authentication) for how the api consumes them.
 
 ### configuration
 
-| option      | default                         | description                                                                                 |
-| ----------- | ------------------------------- | ------------------------------------------------------------------------------------------- |
-| `apiKey`    | —                               | api key, sent as `Authorization: Bearer …`. **required** — or use `Crawlbrulee.fromEnv()`.  |
-| `baseUrl`   | `https://api.crawlbrulee.com`   | override the target host (local dev / staging). trailing slashes are stripped.              |
-| `timeoutMs` | `0` (no timeout)                | per-request timeout in milliseconds (covers headers + body). a per-call `timeoutMs` overrides this. |
+| option      | default                       | description                                                                                         |
+| ----------- | ----------------------------- | --------------------------------------------------------------------------------------------------- |
+| `apiKey`    | —                             | api key, sent as `Authorization: Bearer …`. **required** — or use `Crawlbrulee.fromEnv()`.          |
+| `baseUrl`   | `https://api.crawlbrulee.com` | override the target host (local dev / staging). trailing slashes are stripped.                      |
+| `timeoutMs` | `0` (no timeout)              | per-request timeout in milliseconds (covers headers + body). a per-call `timeoutMs` overrides this. |
 
 ---
 
 ## api reference
 
-all methods return a `Promise` that resolves to the parsed json response, or rejects with a [`CrawlbruleeError`](#errors) 
+all methods return a `Promise` that resolves to the parsed json response, or rejects with a [`CrawlbruleeError`](#errors)
 subclass.
 
 every method accepts an optional second argument with per-call overrides:
@@ -120,7 +120,7 @@ const page = await crawlbrulee.scrape({
 })
 ```
 
-the response carries the extracted content alongside structured `metadata` (the parsed `<head>` tags — `title`, 
+the response carries the extracted content alongside structured `metadata` (the parsed `<head>` tags — `title`,
 `description`, OG/Twitter fields, …) and a `response_meta` envelope:
 
 ```ts
@@ -133,24 +133,24 @@ page.response_meta.usage.cache_hit // true when the result was served from cache
 
 notes:
 
-- **`proxy`**: defaults to `auto` when omitted — it starts at the basic tier and escalates to advanced on failure, 
-billed at the delivered tier. pass `'basic'` or `'advanced'` to pin a tier. on the response, 
-`response_meta.usage.proxy` reports the tier we resolved and used — never `'auto'`. see 
-[proxies & location](https://crawlbrulee.com/docs/proxies) for what each tier does.
-- **`screenshot`**: custom `viewport.width`/`height` are integers in `[16, 10000]` and `device_scale_factor` is in 
-`[1, 4]`; out-of-range values are rejected with a `400`. full capture options: 
-[screenshots](https://crawlbrulee.com/docs/scrape/screenshots).
-- **`extract.images`**: urls preserve their query string and resolve document-relative `src`s against the full page url 
-(browser parity) — the same rules as `links`. every extract field is documented under 
-[extraction](https://crawlbrulee.com/docs/scrape/extraction).
-- **`warnings`**: when we complete a scrape but something is worth flagging — e.g. `screenshot_truncated` when a long 
-page exceeded the scrolling-screenshot height cap — the codes land on `page.warnings`. they're stable, so you can switch  
-on them. fresh scrapes only; cache hits omit warnings.
-- **`unsupported_fields`**: if you request an extract that doesn't apply to the content type (e.g. `markdown` of a pdf), 
-that field name comes back on `page.unsupported_fields` and the rest of your payload is still returned.
+- **`proxy`**: defaults to `auto` when omitted — it starts at the basic tier and escalates to advanced on failure,
+  billed at the delivered tier. pass `'basic'` or `'advanced'` to pin a tier. on the response,
+  `response_meta.usage.proxy` reports the tier we resolved and used — never `'auto'`. see
+  [proxies & location](https://crawlbrulee.com/docs/proxies) for what each tier does.
+- **`screenshot`**: custom `viewport.width`/`height` are integers in `[16, 10000]` and `device_scale_factor` is in
+  `[1, 4]`; out-of-range values are rejected with a `400`. full capture options:
+  [screenshots](https://crawlbrulee.com/docs/scrape/screenshots).
+- **`extract.images`**: urls preserve their query string and resolve document-relative `src`s against the full page url
+  (browser parity) — the same rules as `links`. every extract field is documented under
+  [extraction](https://crawlbrulee.com/docs/scrape/extraction).
+- **`warnings`**: when we complete a scrape but something is worth flagging — e.g. `screenshot_truncated` when a long
+  page exceeded the scrolling-screenshot height cap — the codes land on `page.warnings`. they're stable, so you can switch  
+  on them. fresh scrapes only; cache hits omit warnings.
+- **`unsupported_fields`**: if you request an extract that doesn't apply to the content type (e.g. `markdown` of a pdf),
+  that field name comes back on `page.unsupported_fields` and the rest of your payload is still returned.
 
-see [`ScrapeRequest`](src/types/scrape.ts) and [`ScrapeResponse`](src/types/scrape.ts) for every field, with inline 
-documentation — and the [scrape endpoint](https://crawlbrulee.com/docs/scrape) reference for the api-side contract those 
+see [`ScrapeRequest`](src/types/scrape.ts) and [`ScrapeResponse`](src/types/scrape.ts) for every field, with inline
+documentation — and the [scrape endpoint](https://crawlbrulee.com/docs/scrape) reference for the api-side contract those
 types mirror.
 
 #### `crawlbrulee.scrapeAsync(request, options?)`
@@ -165,8 +165,8 @@ pass a `webhook` to be notified on completion instead of polling — see [webhoo
 
 #### `crawlbrulee.getScrapeStatus(jobId, options?)`
 
-look up the current state of an async job — `pending`, `running`, `done`, or `failed`. the response carries `job_id` and 
-`created_at` (snake_case, straight off the wire). once the job is `done`, it also carries usage accounting on 
+look up the current state of an async job — `pending`, `running`, `done`, or `failed`. the response carries `job_id` and
+`created_at` (snake_case, straight off the wire). once the job is `done`, it also carries usage accounting on
 `response_meta.usage` (`credits`, `proxy`, `cache_hit`).
 
 #### `crawlbrulee.getScrapeResult(jobId, options?)`
@@ -186,15 +186,15 @@ const page = await crawlbrulee.waitForScrape(job_id, {
 })
 ```
 
-throws a `CrawlbruleeError` with `errorName: 'job_failed'` if the job ends in `failed`, or `errorName: 'request_timeout'` 
-if the wait expires. the job lifecycle itself — states, retention, and when to prefer async over sync — is documented 
+throws a `CrawlbruleeError` with `errorName: 'job_failed'` if the job ends in `failed`, or `errorName: 'request_timeout'`
+if the wait expires. the job lifecycle itself — states, retention, and when to prefer async over sync — is documented
 under [async scrape](https://crawlbrulee.com/docs/scrape/async).
 
 ### mapping
 
 #### `crawlbrulee.map(request, options?)`
 
-build (or return a cached) link map for a website. combines sitemap discovery with the freshest cached homepage scrape 
+build (or return a cached) link map for a website. combines sitemap discovery with the freshest cached homepage scrape
 when available.
 
 ```ts
@@ -211,40 +211,40 @@ console.log(result.links.length, 'urls on page 1 of', result.response_meta.pagin
 console.log(result.response_meta.usage.credits, 'credits charged') // usage accounting, alongside pagination + truncation
 ```
 
-`result.response_meta` carries `usage` (credits / resolved `proxy` / `cache_hit`) alongside the map-specific `pagination` 
-and `truncation` blocks. see the [map endpoint](https://crawlbrulee.com/docs/map) for discovery rules and pagination 
+`result.response_meta` carries `usage` (credits / resolved `proxy` / `cache_hit`) alongside the map-specific `pagination`
+and `truncation` blocks. see the [map endpoint](https://crawlbrulee.com/docs/map) for discovery rules and pagination
 semantics.
 
 ### account
 
 #### `crawlbrulee.usage(options?)`
 
-return the current billing-cycle snapshot — `total_credits`, `used_credits`, `available_credits`, `used_quota_percent`, 
+return the current billing-cycle snapshot — `total_credits`, `used_credits`, `available_credits`, `used_quota_percent`,
 `max_concurrency`, and the `usage_reset` timestamp.
 
 #### `crawlbrulee.whoami(options?)`
 
-return the organization name and token identity behind the api key (`organization_name`, `token_name`, and a 
+return the organization name and token identity behind the api key (`organization_name`, `token_name`, and a
 safe-to-display `token_preview`). use it to confirm which key is in play before a destructive operation.
 
-what a call costs, and how credits are counted, is documented under 
+what a call costs, and how credits are counted, is documented under
 [credits & pricing](https://crawlbrulee.com/docs/credits-and-pricing).
 
 ---
 
 ## webhooks
 
-when an async scrape job finishes, crawlbrulee can `POST` a `scrape.complete` webhook to your configured endpoint. the 
+when an async scrape job finishes, crawlbrulee can `POST` a `scrape.complete` webhook to your configured endpoint. the
 sdk ships two helpers for it.
 
-the delivery contract and payload shape live under [webhooks](https://crawlbrulee.com/docs/scrape/webhooks); the 
-signature scheme is specified in [webhook verification](https://crawlbrulee.com/docs/webhook-verification). what follows 
+the delivery contract and payload shape live under [webhooks](https://crawlbrulee.com/docs/scrape/webhooks); the
+signature scheme is specified in [webhook verification](https://crawlbrulee.com/docs/webhook-verification). what follows
 is how this sdk helps you consume them.
 
 ### triggering a webhook (`scrapeAsync`)
 
-pass a `webhook` to `scrapeAsync` to have us deliver a single signed `scrape.complete` `POST` when the job reaches a 
-terminal state. this is **async-only** — the synchronous `scrape()` response _is_ the notification, so it does not accept 
+pass a `webhook` to `scrapeAsync` to have us deliver a single signed `scrape.complete` `POST` when the job reaches a
+terminal state. this is **async-only** — the synchronous `scrape()` response _is_ the notification, so it does not accept
 a `webhook`.
 
 ```ts
@@ -260,15 +260,15 @@ const { job_id } = await crawlbrulee.scrapeAsync({
 })
 ```
 
-configure the signing secret used for these deliveries in the dashboard (**account → webhooks**). there is no per-request 
-secret - when the delivery arrives, verify it with [`verifyWebhookSignature`](#verifywebhooksignatureoptions) and read your `metadata` back from 
-`webhook.data.metadata`. the delivery also carries usage accounting on `webhook.data.response_meta.usage` (`credits`, 
+configure the signing secret used for these deliveries in the dashboard (**account → webhooks**). there is no per-request
+secret - when the delivery arrives, verify it with [`verifyWebhookSignature`](#verifywebhooksignatureoptions) and read your `metadata` back from
+`webhook.data.metadata`. the delivery also carries usage accounting on `webhook.data.response_meta.usage` (`credits`,
 `proxy`, `cache_hit`). see [`AsyncScrapeWebhook`](src/types/scrape.ts) for the full field documentation.
 
 ### `verifyWebhookSignature(options)`
 
-a standalone, network-free helper (built on Web Crypto, so it runs on Node.js 22+, browsers, Bun, Deno, and edge) that 
-verifies the `X-Cwbl-Signature` header. **it returns a result object rather than throwing** — a failed verification is 
+a standalone, network-free helper (built on Web Crypto, so it runs on Node.js 22+, browsers, Bun, Deno, and edge) that
+verifies the `X-Cwbl-Signature` header. **it returns a result object rather than throwing** — a failed verification is
 normal control flow.
 
 ```ts
@@ -288,14 +288,14 @@ if (result.verified) {
 }
 ```
 
-during a **signing-secret rotation grace window** we send a second `X-Cwbl-Signature-Rotated` header signed with the 
-previous secret. `verifyWebhookSignature` tries your `secret` against the primary header first, then the rotated one, 
-and reports which matched via `signedWith` — so verification keeps working whether you still hold the old secret or have 
+during a **signing-secret rotation grace window** we send a second `X-Cwbl-Signature-Rotated` header signed with the
+previous secret. `verifyWebhookSignature` tries your `secret` against the primary header first, then the rotated one,
+and reports which matched via `signedWith` — so verification keeps working whether you still hold the old secret or have
 already rotated to the new one.
 
 ### `crawlbrulee.fetchScrapeResultFromWebhook(webhook, options?)`
 
-given a verified `scrape.complete` body, fetch the scrape result. returns `getScrapeResult(job_id)` for a `success` job; 
+given a verified `scrape.complete` body, fetch the scrape result. returns `getScrapeResult(job_id)` for a `success` job;
 throws a `CrawlbruleeError` for `failed` (carrying the failure message) or `cancelled` jobs.
 
 ```ts
@@ -320,14 +320,14 @@ app.post('/webhooks/crawlbrulee', async (req, res) => {
 })
 ```
 
-always verify the signature **before** parsing or trusting the body. the `X-Cwbl-Event-Id` header (also 
+always verify the signature **before** parsing or trusting the body. the `X-Cwbl-Event-Id` header (also
 `webhook.event_id`) is a stable id you can use to de-duplicate deliveries.
 
 ---
 
 ## errors
 
-every failure raised by the sdk extends [`CrawlbruleeError`](src/errors.ts). typed subclasses are exported for the most actionable 
+every failure raised by the sdk extends [`CrawlbruleeError`](src/errors.ts). typed subclasses are exported for the most actionable
 cases:
 
 | class                  | when it's raised                                                                                     |
@@ -358,8 +358,8 @@ try {
 }
 ```
 
-for exhaustive branching, switch on `err.errorName` — the literal-typed union is exported as `ApiErrorName`. the 
-`isCrawlbruleeError(err)` type guard narrows an `unknown` to the base error. the api docs carry the canonical 
+for exhaustive branching, switch on `err.errorName` — the literal-typed union is exported as `ApiErrorName`. the
+`isCrawlbruleeError(err)` type guard narrows an `unknown` to the base error. the api docs carry the canonical
 [error reference](https://crawlbrulee.com/docs/errors) — every `errorName`, what causes it, and how to recover.
 
 ## cancellation and timeouts
@@ -373,7 +373,7 @@ const page = crawlbrulee.scrape({ url: 'https://slow.example.com' }, { signal: c
 setTimeout(() => controller.abort(), 5_000)
 ```
 
-the per-call `timeoutMs` and the caller's signal are composed — whichever fires first wins. a fired timeout surfaces as 
+the per-call `timeoutMs` and the caller's signal are composed — whichever fires first wins. a fired timeout surfaces as
 a `TransportError` with `errorName: 'request_timeout'`; an aborted signal as `errorName: 'client_closed_request'`.
 
 ---
