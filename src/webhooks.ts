@@ -255,7 +255,7 @@ function getSubtle(): SubtleCryptoLike {
   const subtle = globalThis.crypto?.subtle
   if (!subtle) {
     throw new Error(
-      'Web Crypto (globalThis.crypto.subtle) is not available in this runtime. crawlbrulee webhook verification requires Node.js 20+, Bun, Deno, or a modern browser/edge runtime.'
+      'Web Crypto (globalThis.crypto.subtle) is not available in this runtime. crawlbrulee webhook verification requires Node.js 22+, Bun, Deno, or a modern browser/edge runtime.'
     )
   }
   return subtle

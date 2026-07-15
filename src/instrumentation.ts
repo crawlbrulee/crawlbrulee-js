@@ -23,7 +23,7 @@ export const CwblInstrumentation = {
     const g = globalThis as { fetch?: FetchLike }
     if (typeof g.fetch !== 'function') {
       throw new CrawlbruleeError(
-        'No global fetch is available in this runtime. crawlbrulee requires Node.js 20+, Bun, Deno, or a modern browser/edge runtime.',
+        'No global fetch is available in this runtime. crawlbrulee requires Node.js 22+, Bun, Deno, or a modern browser/edge runtime.',
         { status: 0, errorName: null }
       )
     }
