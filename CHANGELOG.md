@@ -36,7 +36,7 @@ docstring-only — the sdk still omits the field when unset and lets the server 
 
 - **`response_meta.usage` envelope.** scrape responses and the map response now carry usage accounting at 
 `response_meta.usage`: `{ credits, proxy, cache_hit }` — `credits` is the credits charged (`0` on a cache hit), `proxy` 
-is the resolved proxy tier actually used (`'none' | 'basic' | 'advanced'`, never `'auto'`), and `cache_hit` indicates 
+is the resolved proxy tier actually used (`'basic' | 'advanced'`, never `'auto'`), and `cache_hit` indicates 
 whether the result was served from cache.
   - `ScrapeResponse.response_meta` (required).
   - `MapResponse.response_meta.usage` (sibling to the existing `pagination` and `truncation`).

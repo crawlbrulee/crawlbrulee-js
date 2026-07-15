@@ -9,10 +9,8 @@
  * - `advanced` — residential proxy, higher success rate on protected sites.
  * - `auto` — start at the basic tier and escalate to advanced on failure;
  *   billed at the delivered tier. This is the default when `proxy` is omitted.
- * - `none` — skip the proxy entirely. Rejected in production; available on
- *   staging only as a debug/perf-test toggle.
  */
-export type ProxyTier = 'basic' | 'advanced' | 'auto' | 'none'
+export type ProxyTier = 'basic' | 'advanced' | 'auto'
 
 /**
  * Proxy tier the server actually used to route a fetch, as reported back in
@@ -20,7 +18,7 @@ export type ProxyTier = 'basic' | 'advanced' | 'auto' | 'none'
  * includes `auto` — when a request asks for `auto`, the server resolves it to a
  * concrete tier and echoes the resolved value here.
  */
-export type ResolvedProxyTier = 'none' | 'basic' | 'advanced'
+export type ResolvedProxyTier = 'basic' | 'advanced'
 
 /**
  * Usage accounting for a single billable operation, returned on the response

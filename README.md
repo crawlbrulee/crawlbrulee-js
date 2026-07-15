@@ -127,14 +127,14 @@ the response carries the extracted content alongside structured `metadata` (the 
 page.metadata?.title // structured <head> metadata (when extract.metadata, on by default)
 
 page.response_meta.usage.credits // credits charged — 0 on a cache hit
-page.response_meta.usage.proxy // the resolved proxy tier actually used: 'none' | 'basic' | 'advanced' (never 'auto')
+page.response_meta.usage.proxy // the resolved proxy tier actually used: 'basic' | 'advanced' (never 'auto')
 page.response_meta.usage.cache_hit // true when the result was served from cache
 ```
 
 notes:
 
 - **`proxy`**: defaults to `auto` when omitted — it starts at the basic tier and escalates to advanced on failure, 
-billed at the delivered tier. pass `'basic'`, `'advanced'`, or `'none'` to pin a tier. on the response, 
+billed at the delivered tier. pass `'basic'` or `'advanced'` to pin a tier. on the response, 
 `response_meta.usage.proxy` reports the tier we resolved and used — never `'auto'`. see 
 [proxies & location](https://crawlbrulee.com/docs/proxies) for what each tier does.
 - **`screenshot`**: custom `viewport.width`/`height` are integers in `[16, 10000]` and `device_scale_factor` is in 
