@@ -4,6 +4,13 @@ all notable changes to `@crawlbrulee/sdk` are documented here.
 
 this project follows [Semantic Versioning](https://semver.org). while on `0.x`, minor versions may include breaking changes.
 
+## 0.7.1 (2026-07-19)
+
+### changed
+
+- internal: the package is now built with tsdown (previously tsup) on TypeScript 6. no api changes —
+  the exported types and runtime behaviour are identical, and the published files are unchanged.
+
 ## 0.7.0 (2026-07-15)
 
 ### changed
