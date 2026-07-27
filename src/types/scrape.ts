@@ -34,11 +34,6 @@ export interface ScrapeCache {
    * Defaults to 2 days when omitted.
    */
   max_age?: number | string
-  /**
-   * Treat URLs with different query parameters as the same cache entry.
-   * Defaults to `false`.
-   */
-  ignore_query_params?: boolean
 }
 
 /** Optional locale + country emulation for the scrape. */
@@ -57,7 +52,12 @@ export interface ScrapeLocation {
 
 /** Request body for `POST /api/scrape` (and `POST /api/scrape/async`). */
 export interface ScrapeRequest {
-  /** The URL to scrape. */
+  /**
+   * The URL to scrape. Known tracking parameters (`utm_*`, `mtm_*`, `ga_*`, `pk_*`, `gclid`,
+   * `fbclid`, `msclkid`, and more) are removed before the page is fetched, so they reach
+   * neither the target site nor the cache key. Every other query parameter is kept verbatim
+   * and is part of the cache key.
+   */
   url: string
   /** Which content formats to extract. Defaults to `metadata + cleaned_html`. */
   extract?: ScrapeExtract
