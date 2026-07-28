@@ -27,13 +27,14 @@ export type ResolvedProxyTier = 'basic' | 'advanced'
  */
 export interface Usage {
   /**
-   * Credits charged for this operation. `0` on a cache hit (no fresh fetch was
-   * performed).
+   * Credits charged for this operation. `0` on a fully cached result — only
+   * parts we still had to compute fresh (e.g. a newly produced
+   * screenshot-slice variant) are charged.
    */
   credits: number
   /** The proxy tier the server resolved and used (never `auto`). */
   proxy: ResolvedProxyTier
-  /** Whether the result was served from cache (no fresh fetch). */
+  /** Whether the result was served from cache. */
   cache_hit: boolean
 }
 
@@ -149,6 +150,7 @@ export type ApiErrorName =
   | 'internal_server_error'
   | 'too_many_requests'
   | 'unsupported_content'
+  | 'unsupported_screenshot_output'
   | 'validation_error'
   | 'antibot_blocked'
 

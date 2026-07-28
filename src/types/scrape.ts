@@ -174,9 +174,16 @@ export interface PageInlineImage {
 export interface PageLink {
   /** Anchor text of the link. */
   text: string
-  /** The link URL as it appears on the page (absolute or relative). */
+  /**
+   * The link URL as written on the page, resolved to an absolute URL.
+   * Verbatim otherwise: query string, fragment, and duplicates are preserved.
+   * Non-http(s) hrefs (`mailto:`, `tel:`, …) are dropped.
+   */
   href: string
-  /** Whether the link points to the same domain as the scraped page. */
+  /**
+   * Whether the link points to the same domain as the scraped page. `www` and
+   * the bare domain are equivalent; other subdomains are external.
+   */
   internal: boolean
 }
 
@@ -212,8 +219,14 @@ export interface ScrapeMetadata {
 
 /** Successful response from `POST /api/scrape` and `GET /api/scrape/result/:jobId`. */
 export interface ScrapeResponse {
-  /** The URL that was actually scraped (after any redirects). */
+  /**
+   * The URL that was actually scraped, after any redirects, in cleaned
+   * canonical form (tracking params and fragment removed) — the base that
+   * `links`, `images`, and `internal` labels are computed against.
+   */
   url: string
+  /** The URL you requested, echoed verbatim — before any redirects. */
+  requested_url: string
   /** `Content-Type` header returned by the origin. */
   content_type?: string
   /**
@@ -233,9 +246,12 @@ export interface ScrapeResponse {
   links?: PageLink[]
   /**
    * Captured screenshot (when `extract.screenshot`). In rare cases a screenshot
-   * can't be captured; when that happens the rest of your requested outputs are
-   * still returned and this field is simply left out (so it reads back as
-   * `undefined`). Guard with `page.screenshot?.url`.
+   * can't be captured; when you also requested other outputs those are still
+   * returned and this field is simply left out (so it reads back as
+   * `undefined`) — guard with `page.screenshot?.url`. A screenshot-only request
+   * that can't deliver fails instead of returning an empty response: a `422`
+   * with `unsupported_screenshot_output` when the content type can't be
+   * screenshotted, a `500` when the capture itself failed — and isn't billed.
    */
   screenshot?: ScreenshotResult
   /** Extracted page metadata (when `extract.metadata`, on by default). */

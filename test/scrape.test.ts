@@ -8,6 +8,7 @@ describe('Crawlbrulee.scrape', () => {
     q.enqueue(
       jsonResponse({
         url: 'https://example.com/',
+        requested_url: 'https://example.com',
         markdown: '# Hello',
         metadata: { title: 'Example' },
         response_meta: { usage: { credits: 1, proxy: 'advanced', cache_hit: false } },
@@ -32,6 +33,7 @@ describe('Crawlbrulee.scrape', () => {
     })
     expect(res.markdown).toBe('# Hello')
     expect(res.metadata?.title).toBe('Example')
+    expect(res.requested_url).toBe('https://example.com')
     expect(res.response_meta.usage).toEqual({ credits: 1, proxy: 'advanced', cache_hit: false })
   })
 

@@ -223,6 +223,7 @@ export function createApiError(body: ApiErrorResponse, status: number): Crawlbru
     case 'url_credentials_not_supported':
     case 'blocked_url':
     case 'unsupported_content':
+    case 'unsupported_screenshot_output':
       return new ValidationError(message, { status, errorName: name, response })
   }
 

@@ -4,6 +4,32 @@ all notable changes to `@crawlbrulee/sdk` are documented here.
 
 this project follows [Semantic Versioning](https://semver.org). while on `0.x`, minor versions may include breaking changes.
 
+## 0.9.0 (2026-07-28)
+
+### added
+
+- **`ScrapeResponse.requested_url`** — the url you requested, echoed verbatim, before any redirects.
+  present on both the sync scrape response and the async result. it sits alongside `url`, which is
+  now documented precisely: the url that was actually scraped, after any redirects, in cleaned
+  canonical form (tracking params and fragment removed) — the base that `links`, `images`, and
+  `internal` labels are computed against.
+- **`unsupported_screenshot_output`** joined the `ApiErrorName` union. the sdk maps it to
+  `ValidationError`, alongside `unsupported_content`.
+
+### changed (docs)
+
+- **screenshot-only requests.** when a screenshot can't be captured and you also requested other
+  outputs, those are still returned and the `screenshot` field is left out — unchanged. a
+  screenshot-only request that can't deliver now fails instead of returning an empty response:
+  a `422` with `unsupported_screenshot_output` when the content type can't be screenshotted, a
+  `500` when the capture itself failed — and isn't billed.
+- **cache billing wording.** `response_meta.usage.credits` is `0` on a fully cached result — only
+  parts we still had to compute fresh (e.g. a newly produced screenshot-slice variant) are charged.
+- **links.** `PageLink.href` is the url as written on the page, resolved to an absolute url —
+  verbatim otherwise (query string, fragment, and duplicates preserved; non-http(s) hrefs are
+  dropped). `PageLink.internal` means same domain, with `www` and the bare domain equivalent;
+  other subdomains are external.
+
 ## 0.8.0 (2026-07-27)
 
 ### removed
