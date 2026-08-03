@@ -25,7 +25,7 @@ export interface CrawlbruleeOptions {
   /**
    * Override the base URL the SDK targets. Defaults to the production host
    * ({@link DEFAULT_BASE_URL}). Intended for local development and staging
-   * (e.g. `https://api.staging.crawlbrulee.com`) — production callers should
+   * (e.g. `https://api.<staging-domain>`) — production callers should
    * leave it unset. Trailing slashes are stripped.
    */
   baseUrl?: string
