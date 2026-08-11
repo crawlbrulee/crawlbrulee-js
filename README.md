@@ -138,7 +138,7 @@ notes:
   `response_meta.usage.proxy` reports the tier we resolved and used — never `'auto'`. see
   [proxies & location](https://crawlbrulee.com/docs/proxies) for what each tier does.
 - **`screenshot`**: custom `viewport.width`/`height` are integers in `[16, 10000]` and `device_scale_factor` is in
-  `[1, 4]`; out-of-range values are rejected with a `400`. full capture options:
+  `[1, 3]`; out-of-range values are rejected with a `400`. full capture options:
   [screenshots](https://crawlbrulee.com/docs/scrape/screenshots).
 - **`extract.images`**: urls preserve their query string and resolve document-relative `src`s against the full page url
   (browser parity) — the same rules as `links`. every extract field is documented under
