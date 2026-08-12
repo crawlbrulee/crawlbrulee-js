@@ -5,6 +5,7 @@ import {
   CrawlbruleeError,
   NotFoundError,
   RateLimitError,
+  ServiceUnavailableError,
   TransportError,
   UsageAllocationError,
   ValidationError,
@@ -83,6 +84,33 @@ describe('Error mapping', () => {
     const client = buildClient(q.fetch)
 
     await expect(client.getScrapeResult('missing')).rejects.toBeInstanceOf(NotFoundError)
+  })
+
+  it('maps 503 service_unavailable to ServiceUnavailableError, not AuthenticationError', async () => {
+    const q = createFetchQueue()
+    q.enqueue(jsonResponse({ name: 'service_unavailable', message: 'try again shortly' }, 503))
+    const client = buildClient(q.fetch)
+
+    try {
+      await client.scrape({ url: 'https://example.com' })
+      throw new Error('expected throw')
+    } catch (err) {
+      expect(err).toBeInstanceOf(ServiceUnavailableError)
+      // A transient 503 must never read as a credentials problem — that is the
+      // whole point of the api no longer returning 401 for infra failures.
+      expect(err).not.toBeInstanceOf(AuthenticationError)
+      const e = err as ServiceUnavailableError
+      expect(e.status).toBe(503)
+      expect(e.errorName).toBe('service_unavailable')
+    }
+  })
+
+  it('maps a 503 with an unrecognized name to ServiceUnavailableError by status', async () => {
+    const q = createFetchQueue()
+    q.enqueue(jsonResponse({ name: 'internal_server_error', message: 'upstream down' }, 503))
+    const client = buildClient(q.fetch)
+
+    await expect(client.whoami()).rejects.toBeInstanceOf(ServiceUnavailableError)
   })
 
   it('maps invalid_url to ValidationError', async () => {

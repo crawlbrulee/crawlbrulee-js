@@ -12,14 +12,24 @@ export interface ScrapeExtract {
   cleaned_html?: boolean
   /** Extract the page as clean Markdown. Default `false`. */
   markdown?: boolean
-  /** Return the raw, unprocessed HTML. Default `false`. */
+  /**
+   * Return the raw, unprocessed HTML. Default `false`. Capped at 10 000 000
+   * characters per page; past that the HTML is truncated at a tag boundary and
+   * a `raw_html_truncated` warning is returned.
+   */
   raw_html?: boolean
-  /** Extract all links found on the page. Default `false`. */
+  /**
+   * Extract the links found on the page. Default `false`. At most 30 000 links
+   * per page — beyond that the list is truncated and a `links_truncated`
+   * warning is returned.
+   */
   links?: boolean
   /**
-   * Extract all inline images found on the page. Default `false`. Image URLs
+   * Extract the inline images found on the page. Default `false`. Image URLs
    * preserve their query string, and document-relative `src`s are resolved
-   * against the full page URL (browser parity) — same rules as `links`.
+   * against the full page URL (browser parity) — same rules as `links`. At most
+   * 10 000 images per page — beyond that the list is truncated and an
+   * `inline_images_truncated` warning is returned.
    */
   images?: boolean
   /** Capture a screenshot. Omit to skip; set to a `ScreenshotRequest` to enable. */
@@ -217,6 +227,25 @@ export interface ScrapeMetadata {
   favicon_url?: string | null
 }
 
+/**
+ * Non-error notices returned on {@link ScrapeResponse.warnings}. Stable codes —
+ * safe to switch on. Each one means output was produced but capped:
+ *
+ * - `screenshot_truncated` — a long page exceeded the scrolling-screenshot
+ *   height cap.
+ * - `links_truncated` — the page had more than 30 000 links.
+ * - `inline_images_truncated` — the page had more than 10 000 inline images.
+ * - `raw_html_truncated` — the page body exceeded 10 000 000 characters of HTML.
+ * - `metadata_truncated` — the page `<head>` exceeded 2 000 000 characters of
+ *   HTML, so some metadata may be missing.
+ */
+export type ScrapeWarningCode =
+  | 'screenshot_truncated'
+  | 'links_truncated'
+  | 'inline_images_truncated'
+  | 'raw_html_truncated'
+  | 'metadata_truncated'
+
 /** Successful response from `POST /api/scrape` and `GET /api/scrape/result/:jobId`. */
 export interface ScrapeResponse {
   /**
@@ -238,7 +267,10 @@ export interface ScrapeResponse {
   markdown?: string
   /** Cleaned HTML of the main page content (when `extract.cleaned_html`). */
   cleaned_html?: string
-  /** Raw, unprocessed HTML (when `extract.raw_html`). */
+  /**
+   * Raw, unprocessed HTML (when `extract.raw_html`). Truncated at a tag
+   * boundary past 10 000 000 characters, with a `raw_html_truncated` warning.
+   */
   raw_html?: string
   /** Inline images discovered on the page (when `extract.images`). */
   images?: PageInlineImage[]
@@ -257,12 +289,14 @@ export interface ScrapeResponse {
   /** Extracted page metadata (when `extract.metadata`, on by default). */
   metadata?: ScrapeMetadata
   /**
-   * Non-error notices about the scrape (e.g. `screenshot_truncated` when a
-   * long page exceeded the scrolling-screenshot height cap). Stable codes —
-   * safe to switch on. Currently surfaced only on fresh scrapes; cache hits
-   * omit warnings.
+   * Non-error notices about the scrape — `screenshot_truncated`,
+   * `links_truncated`, `inline_images_truncated`, `raw_html_truncated`, and
+   * `metadata_truncated`; see {@link ScrapeWarningCode} for what each means.
+   * The codes are stable and safe to switch on, but the array stays widened to
+   * `string` so a newly introduced code doesn't break your build. Currently
+   * surfaced only on fresh scrapes; cache hits omit warnings.
    */
-  warnings?: string[]
+  warnings?: (ScrapeWarningCode | (string & {}))[]
   /**
    * Response envelope metadata. Carries `usage` (credits charged, resolved
    * proxy tier, and whether the result was a cache hit).

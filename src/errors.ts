@@ -147,6 +147,25 @@ export class NotFoundError extends CrawlbruleeError {
 }
 
 /**
+ * Raised for 503 responses — the API could not serve the request right now
+ * (a transient infrastructure failure, not a problem with your request).
+ *
+ * This is **retryable**: back off and try again. In particular it is not an
+ * authentication failure, so it is never a reason to rotate your API key —
+ * a genuinely bad or expired key still comes back as a 401
+ * (`invalid_credentials`) and raises {@link AuthenticationError}.
+ */
+export class ServiceUnavailableError extends CrawlbruleeError {
+  constructor(
+    message: string,
+    options: { status: number; errorName: ApiErrorName; response?: ApiErrorResponse }
+  ) {
+    super(message, options)
+    this.name = 'ServiceUnavailableError'
+  }
+}
+
+/**
  * Raised when a request cannot be sent or no structured response is parsed.
  *
  * The `errorName` discriminates the cause:
@@ -216,6 +235,9 @@ export function createApiError(body: ApiErrorResponse, status: number): Crawlbru
     case 'not_found':
       return new NotFoundError(message, { status, errorName: name, response })
 
+    case 'service_unavailable':
+      return new ServiceUnavailableError(message, { status, errorName: name, response })
+
     case 'validation_error':
     case 'invalid_url':
     case 'url_too_long':
@@ -238,6 +260,9 @@ export function createApiError(body: ApiErrorResponse, status: number): Crawlbru
   }
   if (status === 404) {
     return new NotFoundError(message, { status, errorName: name, response })
+  }
+  if (status === 503) {
+    return new ServiceUnavailableError(message, { status, errorName: name, response })
   }
 
   return new CrawlbruleeError(message, { status, errorName: name, details, response })

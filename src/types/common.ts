@@ -104,7 +104,7 @@ export interface ScreenshotViewport {
   height: number
   /**
    * Device pixel ratio (e.g. 2 for retina). Fractional values are allowed;
-   * must be in `[1, 4]`. Defaults to 1 server-side.
+   * must be in `[1, 3]`. Defaults to 1 server-side.
    */
   device_scale_factor?: number
 }
@@ -148,6 +148,7 @@ export type ApiErrorName =
   | 'resource_already_exists'
   | 'access_denied'
   | 'internal_server_error'
+  | 'service_unavailable'
   | 'too_many_requests'
   | 'unsupported_content'
   | 'unsupported_screenshot_output'

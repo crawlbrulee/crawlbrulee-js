@@ -4,6 +4,28 @@ all notable changes to `@crawlbrulee/sdk` are documented here.
 
 this project follows [Semantic Versioning](https://semver.org). while on `0.x`, minor versions may include breaking changes.
 
+## Unreleased
+
+### added
+
+- **`service_unavailable` joined the `ApiErrorName` union, with a matching `ServiceUnavailableError` class.**
+  the api now answers `503 service_unavailable` when it can't serve an authenticated request because of a
+  transient failure on our side. it used to come back as `401 invalid_credentials`, which read as "your key
+  is bad" and invited a pointless key rotation. the sdk maps it by name and by status, so a `503` with an
+  unexpected body still raises `ServiceUnavailableError`. treat it as retryable — back off and try again;
+  a genuinely missing, invalid, or expired key still raises `AuthenticationError` on a `401`.
+- **four new `warnings` codes: `links_truncated`, `inline_images_truncated`, `raw_html_truncated`, and
+  `metadata_truncated`**, alongside the existing `screenshot_truncated`. they say you got output, capped —
+  a page is limited to 30 000 links, 10 000 inline images, 10 000 000 characters of body html, and
+  2 000 000 characters of `<head>` html. the codes are now enumerated as the exported `ScrapeWarningCode`
+  union; `ScrapeResponse.warnings` keeps accepting any `string`, so this is not a breaking change.
+
+### changed (docs)
+
+- **`screenshot.viewport.device_scale_factor` is capped at `3`, not `4`.** raster and stitch memory scale
+  with the square of the ratio, so a `4` cost ~16× the pixels of a `1` for no gain in machine-readability.
+  values above `3` are rejected with a `400`. the type was already `number`; only the documented range moved.
+
 ## 0.10.0 (2026-08-03)
 
 ### removed (breaking)

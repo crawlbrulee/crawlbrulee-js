@@ -24,6 +24,7 @@ export {
   CrawlbruleeError,
   NotFoundError,
   RateLimitError,
+  ServiceUnavailableError,
   TransportError,
   UsageAllocationError,
   ValidationError,

@@ -143,9 +143,12 @@ notes:
 - **`extract.images`**: urls preserve their query string and resolve document-relative `src`s against the full page url
   (browser parity) — the same rules as `links`. every extract field is documented under
   [extraction](https://crawlbrulee.com/docs/scrape/extraction).
-- **`warnings`**: when we complete a scrape but something is worth flagging — e.g. `screenshot_truncated` when a long
-  page exceeded the scrolling-screenshot height cap — the codes land on `page.warnings`. they're stable, so you can switch  
-  on them. fresh scrapes only; cache hits omit warnings.
+- **`warnings`**: when we complete a scrape but something is worth flagging, the codes land on `page.warnings`. each one
+  means you got output, capped: `screenshot_truncated` (a long page exceeded the scrolling-screenshot height cap),
+  `links_truncated` (more than 30 000 links), `inline_images_truncated` (more than 10 000 inline images),
+  `raw_html_truncated` (more than 10 000 000 characters of body html), and `metadata_truncated` (more than 2 000 000
+  characters of `<head>` html, so some metadata may be missing). they're stable, so you can switch on them — the union is
+  exported as `ScrapeWarningCode`. fresh scrapes only; cache hits omit warnings.
 - **`unsupported_fields`**: if you request an extract that doesn't apply to the content type (e.g. `markdown` of a pdf),
   that field name comes back on `page.unsupported_fields` and the rest of your payload is still returned.
 
@@ -330,15 +333,16 @@ always verify the signature **before** parsing or trusting the body. the `X-Cwbl
 every failure raised by the sdk extends [`CrawlbruleeError`](src/errors.ts). typed subclasses are exported for the most actionable
 cases:
 
-| class                  | when it's raised                                                                                     |
-| ---------------------- | ---------------------------------------------------------------------------------------------------- |
-| `AuthenticationError`  | 401 / 403 responses (missing, invalid, or unauthorized api key).                                     |
-| `RateLimitError`       | 429 responses. exposes `retryAfterMs` and `limitedBy` when the server provided them.                 |
-| `UsageAllocationError` | the org's plan limit was hit. exposes `reason` (`credit_limit`, `concurrency_limit`, …) and `usage`. |
-| `ValidationError`      | 4xx caused by a bad request (`invalid_url`, `url_too_long`, `blocked_url`, …).                       |
-| `NotFoundError`        | 404 responses (e.g. unknown async `jobId`).                                                          |
-| `TransportError`       | network failures, aborts, non-json responses, request body read failures.                            |
-| `CrawlbruleeError`     | base class — used for any other api error. always has `status`, `errorName`, `message`.              |
+| class                     | when it's raised                                                                                     |
+| ------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `AuthenticationError`     | 401 / 403 responses (missing, invalid, or unauthorized api key).                                     |
+| `RateLimitError`          | 429 responses. exposes `retryAfterMs` and `limitedBy` when the server provided them.                 |
+| `UsageAllocationError`    | the org's plan limit was hit. exposes `reason` (`credit_limit`, `concurrency_limit`, …) and `usage`. |
+| `ValidationError`         | 4xx caused by a bad request (`invalid_url`, `url_too_long`, `blocked_url`, …).                       |
+| `NotFoundError`           | 404 responses (e.g. unknown async `jobId`).                                                          |
+| `ServiceUnavailableError` | 503 responses (`service_unavailable`). the api is temporarily unavailable — transient, retry it.     |
+| `TransportError`          | network failures, aborts, non-json responses, request body read failures.                            |
+| `CrawlbruleeError`        | base class — used for any other api error. always has `status`, `errorName`, `message`.              |
 
 ```ts
 import { Crawlbrulee, RateLimitError, UsageAllocationError } from '@crawlbrulee/sdk'
@@ -357,6 +361,11 @@ try {
   }
 }
 ```
+
+`RateLimitError` (429) and `ServiceUnavailableError` (503) are the two transient ones — both are worth retrying with
+backoff, and a 429 carries a `retryAfterMs` hint when the server sent one. a 503 means our side couldn't serve the
+request for a moment; it says nothing about your credentials, so it is **not** a reason to rotate your api key. a key
+that is genuinely missing, invalid, or expired comes back as a 401 and raises `AuthenticationError` instead.
 
 for exhaustive branching, switch on `err.errorName` — the literal-typed union is exported as `ApiErrorName`. the
 `isCrawlbruleeError(err)` type guard narrows an `unknown` to the base error. the api docs carry the canonical
