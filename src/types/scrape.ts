@@ -229,7 +229,9 @@ export interface ScrapeMetadata {
 
 /**
  * Non-error notices returned on {@link ScrapeResponse.warnings}. Stable codes —
- * safe to switch on. Each one means output was produced but capped:
+ * safe to switch on. They come in two families.
+ *
+ * Truncation — the output is there, but capped:
  *
  * - `screenshot_truncated` — a long page exceeded the scrolling-screenshot
  *   height cap.
@@ -238,6 +240,17 @@ export interface ScrapeMetadata {
  * - `raw_html_truncated` — the page body exceeded 10 000 000 characters of HTML.
  * - `metadata_truncated` — the page `<head>` exceeded 2 000 000 characters of
  *   HTML, so some metadata may be missing.
+ *
+ * Unavailability — that section's extraction failed, so the field is omitted
+ * or empty while the rest of the scrape succeeded. These let you tell "the page
+ * had none" apart from "we couldn't read them":
+ *
+ * - `links_unavailable` — link extraction failed.
+ * - `inline_images_unavailable` — image extraction failed.
+ * - `metadata_unavailable` — metadata extraction failed.
+ *
+ * The page body has no such code: if it can't be extracted the scrape fails
+ * outright rather than returning a hollow `200`, and isn't billed.
  */
 export type ScrapeWarningCode =
   | 'screenshot_truncated'
@@ -245,6 +258,9 @@ export type ScrapeWarningCode =
   | 'inline_images_truncated'
   | 'raw_html_truncated'
   | 'metadata_truncated'
+  | 'links_unavailable'
+  | 'inline_images_unavailable'
+  | 'metadata_unavailable'
 
 /** Successful response from `POST /api/scrape` and `GET /api/scrape/result/:jobId`. */
 export interface ScrapeResponse {
@@ -289,12 +305,18 @@ export interface ScrapeResponse {
   /** Extracted page metadata (when `extract.metadata`, on by default). */
   metadata?: ScrapeMetadata
   /**
-   * Non-error notices about the scrape — `screenshot_truncated`,
-   * `links_truncated`, `inline_images_truncated`, `raw_html_truncated`, and
-   * `metadata_truncated`; see {@link ScrapeWarningCode} for what each means.
-   * The codes are stable and safe to switch on, but the array stays widened to
-   * `string` so a newly introduced code doesn't break your build. Currently
-   * surfaced only on fresh scrapes; cache hits omit warnings.
+   * Non-error notices about the scrape — an output was capped (`*_truncated`)
+   * or could not be extracted (`*_unavailable`); see {@link ScrapeWarningCode}
+   * for what each one means. The codes are stable and safe to switch on, but
+   * the array stays widened to `string` so a newly introduced code doesn't
+   * break your build.
+   *
+   * Warnings are stored with the result, so cache hits and async result
+   * fetches carry them too, filtered to the outputs you requested —
+   * `raw_html_truncated` always surfaces, since a truncated body also feeds
+   * `markdown` and `cleaned_html`. The `*_unavailable` codes only ever reach
+   * the request whose own scrape degraded: a cached result missing a field you
+   * asked for is re-scraped rather than served.
    */
   warnings?: (ScrapeWarningCode | (string & {}))[]
   /**

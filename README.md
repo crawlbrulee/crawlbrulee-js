@@ -143,12 +143,15 @@ notes:
 - **`extract.images`**: urls preserve their query string and resolve document-relative `src`s against the full page url
   (browser parity) — the same rules as `links`. every extract field is documented under
   [extraction](https://crawlbrulee.com/docs/scrape/extraction).
-- **`warnings`**: when we complete a scrape but something is worth flagging, the codes land on `page.warnings`. each one
-  means you got output, capped: `screenshot_truncated` (a long page exceeded the scrolling-screenshot height cap),
+- **`warnings`**: when we complete a scrape but something is worth flagging, the codes land on `page.warnings`, in two
+  families. capped output: `screenshot_truncated` (a long page exceeded the scrolling-screenshot height cap),
   `links_truncated` (more than 30 000 links), `inline_images_truncated` (more than 10 000 inline images),
   `raw_html_truncated` (more than 10 000 000 characters of body html), and `metadata_truncated` (more than 2 000 000
-  characters of `<head>` html, so some metadata may be missing). they're stable, so you can switch on them — the union is
-  exported as `ScrapeWarningCode`. fresh scrapes only; cache hits omit warnings.
+  characters of `<head>` html, so some metadata may be missing). failed extraction of one section: `links_unavailable`,
+  `inline_images_unavailable`, and `metadata_unavailable` — the field comes back omitted or empty while the rest of the
+  scrape succeeds, which is how you tell "the page had none" from "we couldn't read them". they're stable, so you can
+  switch on them — the union is exported as `ScrapeWarningCode`. warnings are stored with the result, so cache hits and
+  async result fetches report them too, filtered to the outputs you asked for.
 - **`unsupported_fields`**: if you request an extract that doesn't apply to the content type (e.g. `markdown` of a pdf),
   that field name comes back on `page.unsupported_fields` and the rest of your payload is still returned.
 

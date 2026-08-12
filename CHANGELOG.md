@@ -19,12 +19,25 @@ this project follows [Semantic Versioning](https://semver.org). while on `0.x`, 
   a page is limited to 30 000 links, 10 000 inline images, 10 000 000 characters of body html, and
   2 000 000 characters of `<head>` html. the codes are now enumerated as the exported `ScrapeWarningCode`
   union; `ScrapeResponse.warnings` keeps accepting any `string`, so this is not a breaking change.
+- **three `*_unavailable` warning codes: `links_unavailable`, `inline_images_unavailable`, and
+  `metadata_unavailable`.** where the `*_truncated` codes mean you got output that was capped, these
+  mean that section's extraction failed outright, so the field comes back omitted or empty while the
+  rest of the scrape succeeds. that distinction is the point: an empty `links` array carrying
+  `links_unavailable` is not a page without links, it's a page whose links we couldn't read. the page
+  body has no such code — if it can't be extracted the scrape fails rather than returning a hollow
+  `200`, and isn't billed. they join `ScrapeWarningCode`; `warnings` stays widened to `string`.
 
 ### changed (docs)
 
 - **`screenshot.viewport.device_scale_factor` is capped at `3`, not `4`.** raster and stitch memory scale
   with the square of the ratio, so a `4` cost ~16× the pixels of a `1` for no gain in machine-readability.
   values above `3` are rejected with a `400`. the type was already `number`; only the documented range moved.
+- **`warnings` is no longer described as fresh-scrapes-only.** it used to be: the api computed warnings on
+  the sync scrape path and dropped them everywhere else. they are now stored with the result, so cache hits
+  and async result fetches report the same codes, filtered to the outputs you requested —
+  `raw_html_truncated` always surfaces, since a truncated body also feeds `markdown` and `cleaned_html`.
+  the `*_unavailable` codes are the exception and only ever reach the request whose own scrape degraded:
+  a cached result missing a field you asked for is re-scraped rather than served.
 
 ## 0.10.0 (2026-08-03)
 
