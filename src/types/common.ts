@@ -6,7 +6,7 @@
  * Proxy tier used to route the fetch.
  *
  * - `basic` — datacenter proxy, lowest cost.
- * - `advanced` — residential proxy, higher success rate on protected sites.
+ * - `advanced` — enhanced proxy tier with a higher success rate.
  * - `auto` — start at the basic tier and escalate to advanced on failure;
  *   billed at the delivered tier. This is the default when `proxy` is omitted.
  */
