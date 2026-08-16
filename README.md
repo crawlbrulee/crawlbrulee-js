@@ -16,7 +16,7 @@ this readme covers the sdk itself — the client, the types, and the js-side erg
 the api behaves — endpoints, parameters, and error semantics — please see our
 [api docs](https://crawlbrulee.com/docs).
 
-> **status:** v0.11.0 (beta). the api surface is stabilizing — expect minor breaking changes between 0.x releases.
+> **status:** v0.11.1 (beta). the api surface is stabilizing — expect minor breaking changes between 0.x releases.
 
 **get a free api key** → [dashboard.crawlbrulee.com](https://dashboard.crawlbrulee.com)
 
