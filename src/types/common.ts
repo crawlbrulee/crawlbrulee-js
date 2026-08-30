@@ -21,21 +21,37 @@ export type ProxyTier = 'basic' | 'advanced' | 'auto'
 export type ResolvedProxyTier = 'basic' | 'advanced'
 
 /**
+ * Engine base the operation was billed at. This reflects what the server
+ * delivered, not what the request asked for. `cache` identifies a cache hit.
+ */
+export type BillingEngine = 'text' | 'browser' | 'screenshot' | 'cache'
+
+/**
  * Usage accounting for a single billable operation, returned on the response
  * envelope of scrape, map, and async-status (when terminal). All crawlbrulee
  * responses report this on `response_meta.usage`.
  */
 export interface Usage {
   /**
-   * Credits charged for this operation. `0` on a fully cached result — only
-   * parts we still had to compute fresh (e.g. a newly produced
-   * screenshot-slice variant) are charged.
+   * Credits charged for this operation. This equals the engine base multiplied
+   * by the resolved proxy multiplier, plus {@link screenshot_slices}.
    */
   credits: number
-  /** The proxy tier the server resolved and used (never `auto`). */
+  /**
+   * Engine base billed for the delivered result: `text` (1), `browser` (3),
+   * `screenshot` (5), or `cache` (0).
+   */
+  engine: BillingEngine
+  /**
+   * The proxy tier the server resolved and used (never `auto`). `advanced`
+   * multiplies the engine base by 5.
+   */
   proxy: ResolvedProxyTier
-  /** Whether the result was served from cache. */
-  cache_hit: boolean
+  /**
+   * Screenshot-slice add-on billed for this request: `1` when slices were
+   * produced during this request, otherwise `0`.
+   */
+  screenshot_slices: number
 }
 
 /**

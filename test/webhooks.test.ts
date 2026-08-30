@@ -223,7 +223,9 @@ describe('Crawlbrulee.fetchScrapeResultFromWebhook', () => {
         status: 'success',
         url: 'https://example.com/',
         completed_at: '2026-06-13T12:00:00.000Z',
-        response_meta: { usage: { credits: 1, proxy: 'basic', cache_hit: false } },
+        response_meta: {
+          usage: { credits: 1, engine: 'text', proxy: 'basic', screenshot_slices: 0 },
+        },
         ...overrides,
       },
     }

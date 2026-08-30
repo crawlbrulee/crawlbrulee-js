@@ -16,7 +16,7 @@ this readme covers the sdk itself — the client, the types, and the js-side erg
 the api behaves — endpoints, parameters, and error semantics — please see our
 [api docs](https://crawlbrulee.com/docs).
 
-> **status:** v0.11.1 (beta). the api surface is stabilizing — expect minor breaking changes between 0.x releases.
+> **status:** v0.12.0 (beta). the api surface is stabilizing — expect minor breaking changes between 0.x releases.
 
 **get a free api key** → [dashboard.crawlbrulee.com](https://dashboard.crawlbrulee.com)
 
@@ -126,9 +126,10 @@ the response carries the extracted content alongside structured `metadata` (the 
 ```ts
 page.metadata?.title // structured <head> metadata (when extract.metadata, on by default)
 
-page.response_meta.usage.credits // credits charged — 0 on a fully cached result
+page.response_meta.usage.credits // credits charged
+page.response_meta.usage.engine // billed base: 'text' | 'browser' | 'screenshot' | 'cache'
 page.response_meta.usage.proxy // the resolved proxy tier actually used: 'basic' | 'advanced' (never 'auto')
-page.response_meta.usage.cache_hit // true when the result was served from cache
+page.response_meta.usage.screenshot_slices // billed slice add-on: 0 or 1
 ```
 
 notes:
@@ -173,7 +174,7 @@ pass a `webhook` to be notified on completion instead of polling — see [webhoo
 
 look up the current state of an async job — `pending`, `running`, `done`, or `failed`. the response carries `job_id` and
 `created_at` (snake_case, straight off the wire). once the job is `done`, it also carries usage accounting on
-`response_meta.usage` (`credits`, `proxy`, `cache_hit`).
+`response_meta.usage` (`credits`, `engine`, `proxy`, `screenshot_slices`).
 
 #### `crawlbrulee.getScrapeResult(jobId, options?)`
 
@@ -217,7 +218,7 @@ console.log(result.links.length, 'urls on page 1 of', result.response_meta.pagin
 console.log(result.response_meta.usage.credits, 'credits charged') // usage accounting, alongside pagination + truncation
 ```
 
-`result.response_meta` carries `usage` (credits / resolved `proxy` / `cache_hit`) alongside the map-specific `pagination`
+`result.response_meta` carries `usage` (`credits` / billed `engine` / resolved `proxy` / `screenshot_slices`) alongside the map-specific `pagination`
 and `truncation` blocks. see the [map endpoint](https://crawlbrulee.com/docs/map) for discovery rules and pagination
 semantics.
 
@@ -269,7 +270,7 @@ const { job_id } = await crawlbrulee.scrapeAsync({
 configure the signing secret used for these deliveries in the dashboard (**account → webhooks**). there is no per-request
 secret - when the delivery arrives, verify it with [`verifyWebhookSignature`](#verifywebhooksignatureoptions) and read your `metadata` back from
 `webhook.data.metadata`. the delivery also carries usage accounting on `webhook.data.response_meta.usage` (`credits`,
-`proxy`, `cache_hit`). see [`AsyncScrapeWebhook`](src/types/scrape.ts) for the full field documentation.
+`engine`, `proxy`, `screenshot_slices`). see [`AsyncScrapeWebhook`](src/types/scrape.ts) for the full field documentation.
 
 ### `verifyWebhookSignature(options)`
 

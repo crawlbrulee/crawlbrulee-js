@@ -16,7 +16,7 @@
  *     "url": "https://…",
  *     "completed_at": "…",
  *     "metadata": { "tenant": "acme" },
- *     "response_meta": { "usage": { "credits": 1, "proxy": "basic", "cache_hit": false } }
+ *     "response_meta": { "usage": { "credits": 1, "engine": "text", "proxy": "basic", "screenshot_slices": 0 } }
  *   }
  * }
  * ```
@@ -45,8 +45,8 @@ export interface ScrapeCompleteWebhookData {
    */
   metadata?: Record<string, unknown>
   /**
-   * Response envelope metadata — `usage` (credits charged, resolved proxy tier,
-   * and whether the result was a cache hit). Present only on `status: 'success'`
+   * Response envelope metadata — `usage` (credits charged, billing engine,
+   * resolved proxy tier, and billed screenshot slices). Present only on `status: 'success'`
    * deliveries; omitted for `failed` / `cancelled` (no usage was charged).
    */
   response_meta?: ResponseMeta
