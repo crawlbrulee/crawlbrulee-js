@@ -218,8 +218,8 @@ console.log(result.links.length, 'urls on page 1 of', result.response_meta.pagin
 console.log(result.response_meta.usage.credits, 'credits charged') // usage accounting, alongside pagination + truncation
 ```
 
-`result.response_meta` carries `usage` (`credits` / billed `engine` / resolved `proxy` / `screenshot_slices`) alongside the map-specific `pagination`
-and `truncation` blocks. see the [map endpoint](https://crawlbrulee.com/docs/map) for discovery rules and pagination
+`result.response_meta` carries `usage` (`credits` / billed `engine` / resolved `proxy`) alongside the map-specific `pagination`
+and `truncation` blocks. map operations do not produce screenshot slices. see the [map endpoint](https://crawlbrulee.com/docs/map) for discovery rules and pagination
 semantics.
 
 ### account

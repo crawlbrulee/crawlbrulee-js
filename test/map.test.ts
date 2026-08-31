@@ -9,7 +9,7 @@ describe('Crawlbrulee.map', () => {
       jsonResponse({
         links: [{ url: 'https://example.com/' }, { url: 'https://example.com/about' }],
         response_meta: {
-          usage: { credits: 1, engine: 'text', proxy: 'basic', screenshot_slices: 0 },
+          usage: { credits: 1, engine: 'text', proxy: 'basic' },
           pagination: { page: 1, limit: 100, total: 2, total_pages: 1, has_more: false },
           truncation: {
             storage_capped: false,
@@ -40,11 +40,7 @@ describe('Crawlbrulee.map', () => {
     })
     expect(res.links).toHaveLength(2)
     expect(res.response_meta.pagination.has_more).toBe(false)
-    expect(res.response_meta.usage).toEqual({
-      credits: 1,
-      engine: 'text',
-      proxy: 'basic',
-      screenshot_slices: 0,
-    })
+    expect(res.response_meta.usage).toEqual({ credits: 1, engine: 'text', proxy: 'basic' })
+    expect(res.response_meta.usage).not.toHaveProperty('screenshot_slices')
   })
 })

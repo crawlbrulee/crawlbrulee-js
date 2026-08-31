@@ -27,9 +27,9 @@ export type ResolvedProxyTier = 'basic' | 'advanced'
 export type BillingEngine = 'text' | 'browser' | 'screenshot' | 'cache'
 
 /**
- * Usage accounting for a single billable operation, returned on the response
- * envelope of scrape, map, and async-status (when terminal). All crawlbrulee
- * responses report this on `response_meta.usage`.
+ * Usage accounting for a single billable scrape operation, returned on the
+ * response envelope of scrape and async-status (when terminal), and on
+ * completion webhooks.
  */
 export interface Usage {
   /**
@@ -56,8 +56,7 @@ export interface Usage {
 
 /**
  * Response envelope `response_meta` carried by scrape responses and async-status
- * responses (terminal state only). Currently exposes {@link Usage}; map
- * responses extend this shape with `pagination` + `truncation`.
+ * responses (terminal state only). Map responses use a narrower usage shape.
  */
 export interface ResponseMeta {
   /** Usage accounting for the operation. */

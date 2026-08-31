@@ -1,4 +1,4 @@
-import type { ProxyTier, ResponseMeta } from './common.js'
+import type { BillingEngine, ProxyTier, ResolvedProxyTier } from './common.js'
 
 /** Filter which link types appear in the map result. */
 export interface MapTypes {
@@ -83,11 +83,22 @@ export interface MapTruncation {
   total_detected_before_storage_cap: number
 }
 
+/** Usage accounting returned by the map endpoint. Map operations do not produce screenshot slices. */
+export interface MapUsage {
+  /** Credits charged for this operation. */
+  credits: number
+  /** Engine base billed for the delivered result. */
+  engine: BillingEngine
+  /** The proxy tier the server resolved and used (never `auto`). */
+  proxy: ResolvedProxyTier
+}
+
 /**
- * Response envelope for a map result: the shared {@link ResponseMeta} (`usage`)
- * plus the map-specific `pagination` and `truncation`.
+ * Response envelope for a map result: map usage plus the map-specific
+ * `pagination` and `truncation`.
  */
-export interface MapResponseMeta extends ResponseMeta {
+export interface MapResponseMeta {
+  usage: MapUsage
   pagination: MapPagination
   truncation: MapTruncation
 }
