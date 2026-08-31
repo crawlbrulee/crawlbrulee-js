@@ -1,4 +1,4 @@
-import type { BillingEngine, ProxyTier, ResolvedProxyTier } from './common.js'
+import type { ProxyTier, ResolvedProxyTier } from './common.js'
 
 /** Filter which link types appear in the map result. */
 export interface MapTypes {
@@ -83,12 +83,15 @@ export interface MapTruncation {
   total_detected_before_storage_cap: number
 }
 
+/** Billing engine reported by map: fresh discovery or a cached result. */
+export type MapBillingEngine = 'text' | 'cache'
+
 /** Usage accounting returned by the map endpoint. Map operations do not produce screenshot slices. */
 export interface MapUsage {
   /** Credits charged for this operation. */
   credits: number
-  /** Engine base billed for the delivered result. */
-  engine: BillingEngine
+  /** `text` for fresh discovery or `cache` for a cached result. */
+  engine: MapBillingEngine
   /** The proxy tier the server resolved and used (never `auto`). */
   proxy: ResolvedProxyTier
 }

@@ -10,7 +10,7 @@ this project follows [Semantic Versioning](https://semver.org). while on `0.x`, 
 
 - **map usage no longer exposes `screenshot_slices`.** the exported `MapUsage` type now
   contains only `credits`, `engine`, and `proxy`; scrape, async, and webhook usage retain the
-  slice field.
+  slice field. `MapUsage.engine` is narrowed to `text | cache`.
 
 ## 0.12.0 (2026-08-30)
 
