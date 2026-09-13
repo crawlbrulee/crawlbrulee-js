@@ -16,7 +16,7 @@ this readme covers the sdk itself — the client, the types, and the js-side erg
 the api behaves — endpoints, parameters, and error semantics — please see our
 [api docs](https://crawlbrulee.com/docs).
 
-> **status:** v0.12.0 (beta). the api surface is stabilizing — expect minor breaking changes between 0.x releases.
+> **status:** v0.13.1 (beta). the api surface is stabilizing — expect minor breaking changes between 0.x releases.
 
 **get a free api key** → [dashboard.crawlbrulee.com](https://dashboard.crawlbrulee.com)
 
@@ -109,19 +109,23 @@ const page = await crawlbrulee.scrape({
     screenshot: {
       type: 'full_page',
       device_mode: 'desktop',
-      cleanup: { ads_and_popups: true },
     },
+  },
+  // Shapes markdown, cleaned_html, links, images AND the screenshot.
+  // Never touches raw_html — that is always the page before any removal.
+  cleanup: {
+    ads_and_popups: true,
+    exclude_selectors: ['nav', 'footer'],
   },
   require_js: true,
   proxy: 'advanced',
-  exclude_selectors: ['nav', 'footer'],
   cache: { max_age: 3600 },
   location: { country: 'US' },
 })
 ```
 
 the response carries the extracted content alongside structured `metadata` (the parsed `<head>` tags — `title`,
-`description`, OG/Twitter fields, …) and a `response_meta` envelope:
+`description`, OG/Twitter fields, …) and a `response_meta` object:
 
 ```ts
 page.metadata?.title // structured <head> metadata (when extract.metadata, on by default)
@@ -218,9 +222,44 @@ console.log(result.links.length, 'urls on page 1 of', result.response_meta.pagin
 console.log(result.response_meta.usage.credits, 'credits charged') // usage accounting, alongside pagination + truncation
 ```
 
+- **`max_urls`** defaults to `5_000` and maxes out at `100_000`. discovery _stops_ at this number, so a smaller value
+  is a cheaper and faster crawl, not just a shorter answer.
+- **`limit`** (urls per page) defaults to `5_000` and maxes out at `10_000`.
+- the sdk sends only the fields you pass — omit `max_urls` or `limit` and the server applies its own default.
+
 `result.response_meta` carries `usage` (`credits` / billed `engine` / resolved `proxy`) alongside the map-specific `pagination`
-and `truncation` blocks. map operations do not produce screenshot slices. see the [map endpoint](https://crawlbrulee.com/docs/map) for discovery rules and pagination
-semantics.
+and `truncation` blocks. map operations do not produce screenshot slices.
+
+#### did the map miss pages?
+
+a map that stopped at your own `max_urls` comes back with exactly `max_urls` links and `response_capped: false` — the
+signal that more exists is `discovery_cap_reason`, not the capped flags:
+
+```ts
+const { truncation } = result.response_meta
+
+if (truncation.discovery_capped) {
+  // the site has more pages than this map lists
+  console.log('stopped by:', truncation.discovery_cap_reason) // 'max_urls' | 'time' | 'file_budget' | 'depth' | 'file_size'
+  console.log(truncation.sitemaps_skipped, 'sitemap files skipped or partly read')
+}
+
+if (truncation.discovery_cap_reason === 'max_urls') {
+  // the only reason you can fix from the request — ask again with a higher max_urls
+}
+```
+
+every other reason (`time`, `file_budget`, `depth`, `file_size`) means the site itself is big, slow or deeply nested;
+re-asking with a higher `max_urls` will not return more.
+
+#### url shape and ordering
+
+returned urls come back normalised, the same way `/scrape` normalises the `url` it returns.
+
+ordering is stable, with the most useful links first,
+so a link item is always just `{ url }`.
+
+see the [map endpoint](https://crawlbrulee.com/docs/map) for discovery rules and pagination semantics.
 
 ### account
 
@@ -337,16 +376,19 @@ always verify the signature **before** parsing or trusting the body. the `X-Cwbl
 every failure raised by the sdk extends [`CrawlbruleeError`](src/errors.ts). typed subclasses are exported for the most actionable
 cases:
 
-| class                     | when it's raised                                                                                     |
-| ------------------------- | ---------------------------------------------------------------------------------------------------- |
-| `AuthenticationError`     | 401 / 403 responses (missing, invalid, or unauthorized api key).                                     |
-| `RateLimitError`          | 429 responses. exposes `retryAfterMs` and `limitedBy` when the server provided them.                 |
-| `UsageAllocationError`    | the org's plan limit was hit. exposes `reason` (`credit_limit`, `concurrency_limit`, …) and `usage`. |
-| `ValidationError`         | 4xx caused by a bad request (`invalid_url`, `url_too_long`, `blocked_url`, …).                       |
-| `NotFoundError`           | 404 responses (e.g. unknown async `jobId`).                                                          |
-| `ServiceUnavailableError` | 503 responses (`service_unavailable`). the api is temporarily unavailable — transient, retry it.     |
-| `TransportError`          | network failures, aborts, non-json responses, request body read failures.                            |
-| `CrawlbruleeError`        | base class — used for any other api error. always has `status`, `errorName`, `message`.              |
+| class                     | when it's raised                                                                                           |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `AuthenticationError`     | 401 / 403 responses (missing, invalid, or unauthorized api key).                                           |
+| `AntibotBlockedError`     | 403 `antibot_blocked` — the target site's bot protection blocked us. not a key problem.                    |
+| `TooManyRedirectsError`   | 422 `too_many_redirects` — the target site redirected in a loop. not a bad request; retrying rarely helps. |
+| `PageTooLargeError`       | 422 `page_too_large` — the page's html was too large to process. terminal; do not retry it.                |
+| `RateLimitError`          | 429 responses. exposes `retryAfterMs` and `limitedBy` when the server provided them.                       |
+| `UsageAllocationError`    | the org's plan limit was hit. exposes `reason` (`credit_limit`, `concurrency_limit`, …) and `usage`.       |
+| `ValidationError`         | 4xx caused by a bad request (`invalid_url`, `url_too_long`, `blocked_url`, …).                             |
+| `NotFoundError`           | 404 responses (e.g. unknown async `jobId`).                                                                |
+| `ServiceUnavailableError` | 503 responses (`service_unavailable`). the api is temporarily unavailable — transient, retry it.           |
+| `TransportError`          | network failures, aborts, non-json responses, request body read failures.                                  |
+| `CrawlbruleeError`        | base class — used for any other api error. always has `status`, `errorName`, `message`.                    |
 
 ```ts
 import { Crawlbrulee, RateLimitError, UsageAllocationError } from '@crawlbrulee/sdk'
@@ -370,6 +412,19 @@ try {
 backoff, and a 429 carries a `retryAfterMs` hint when the server sent one. a 503 means our side couldn't serve the
 request for a moment; it says nothing about your credentials, so it is **not** a reason to rotate your api key. a key
 that is genuinely missing, invalid, or expired comes back as a 401 and raises `AuthenticationError` instead.
+
+**not every 403 is a key problem.** a 403 carrying `antibot_blocked` means the _target site_ blocked the request, not
+that your key was rejected — it raises `AntibotBlockedError`. retrying the same request rarely helps; use a higher
+proxy tier (`proxy: 'advanced'`) or skip the site. both `/scrape` and `/map` can return it. only a 403 with an
+unrecognized name still falls back to `AuthenticationError`.
+
+**a 422 `too_many_redirects` is the target's doing too.** the site redirected the request in a loop, or through more
+hops than the api follows — it raises `TooManyRedirectsError`, not `ValidationError`, because nothing about your
+request was wrong. retrying rarely helps. both `/scrape` and `/map` can return it.
+
+**a 422 `page_too_large` means the page, not the request.** the page's html was too large to process, so it raises
+`PageTooLargeError`, not `ValidationError`. it is terminal: the same url will fail the same way, so do not retry it —
+scrape a smaller page instead. `/scrape` returns it; `/map` does not.
 
 for exhaustive branching, switch on `err.errorName` — the literal-typed union is exported as `ApiErrorName`. the
 `isCrawlbruleeError(err)` type guard narrows an `unknown` to the base error. the api docs carry the canonical
@@ -398,7 +453,8 @@ pnpm install
 pnpm test         # vitest
 pnpm typecheck    # tsc --noEmit
 pnpm lint         # eslint
-pnpm build        # tsup → dist/
+pnpm build        # tsdown → dist/
+pnpm check:package # build + verify esm/commonjs declaration resolution
 ```
 
 the sdk has zero runtime dependencies on purpose. please keep it that way when contributing.

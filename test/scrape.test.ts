@@ -71,7 +71,6 @@ describe('Crawlbrulee.scrape', () => {
           type: 'full_page',
           device_mode: 'desktop',
           viewport: { width: 1280, height: 720 },
-          cleanup: { ads_and_popups: true },
           actions_before: [
             { type: 'wait', ms: 500 },
             { type: 'scroll', pixels: 2000 },

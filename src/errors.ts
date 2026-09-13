@@ -52,7 +52,14 @@ export class CrawlbruleeError extends Error {
   }
 }
 
-/** Raised for 401 / 403 responses (missing, invalid, or unauthorized API key). */
+/**
+ * Raised when the API rejects your credentials — a missing, invalid, or
+ * unauthorized API key (`invalid_credentials`, `access_denied`).
+ *
+ * Not every 403 is a key problem: a 403 carrying `antibot_blocked` is the
+ * *target site* blocking us and raises {@link AntibotBlockedError} instead.
+ * Only an unrecognized 403 name falls back to this class.
+ */
 export class AuthenticationError extends CrawlbruleeError {
   constructor(
     message: string,
@@ -64,13 +71,61 @@ export class AuthenticationError extends CrawlbruleeError {
 }
 
 /**
+ * Raised when the target site's anti-bot protection blocked the request
+ * (HTTP 403, `antibot_blocked`). Not an API-key problem — retrying the same
+ * tier rarely helps; try a higher proxy tier or skip the site.
+ */
+export class AntibotBlockedError extends CrawlbruleeError {
+  constructor(
+    message: string,
+    options: { status: number; errorName: ApiErrorName; response?: ApiErrorResponse }
+  ) {
+    super(message, options)
+    this.name = 'AntibotBlockedError'
+  }
+}
+
+/**
+ * Raised when the target site redirected the request in a loop, or through
+ * more hops than the API follows (HTTP 422, `too_many_redirects`). Like
+ * {@link AntibotBlockedError} this is the target's doing — not a key problem
+ * and not a bad request — so it is neither an `AuthenticationError` nor a
+ * `ValidationError`. Retrying rarely helps. Returned by both `scrape` and `map`.
+ */
+export class TooManyRedirectsError extends CrawlbruleeError {
+  constructor(
+    message: string,
+    options: { status: number; errorName: ApiErrorName; response?: ApiErrorResponse }
+  ) {
+    super(message, options)
+    this.name = 'TooManyRedirectsError'
+  }
+}
+
+/**
+ * Raised when the page's HTML was too large to process (HTTP 422,
+ * `page_too_large`). Like {@link TooManyRedirectsError} this is about the page,
+ * not your request — so it is neither an `AuthenticationError` nor a
+ * `ValidationError`. It is terminal: the same URL fails the same way, so do not
+ * retry it. Returned by `scrape`.
+ */
+export class PageTooLargeError extends CrawlbruleeError {
+  constructor(
+    message: string,
+    options: { status: number; errorName: ApiErrorName; response?: ApiErrorResponse }
+  ) {
+    super(message, options)
+    this.name = 'PageTooLargeError'
+  }
+}
+
+/**
  * Raised for HTTP 429 responses. When the server included a `retry_after_ms`
  * hint in `details` it is surfaced directly on the instance.
  *
  * `errorName` is always the literal `'too_many_requests'` — the SDK normalizes
- * this even when the server returns a 429 with a different `name` field
- * (e.g. a CDN coalescing upstream rate limiting). The original body is still
- * available on `response`.
+ * this even when the server returns a 429 with a different `name` field. The
+ * original body is still available on `response`.
  */
 export class RateLimitError extends CrawlbruleeError {
   override readonly errorName: 'too_many_requests'
@@ -227,6 +282,15 @@ export function createApiError(body: ApiErrorResponse, status: number): Crawlbru
           : { error_name: 'usage_allocation_error', reason: 'internal_error' }
       return new UsageAllocationError(message, { status, details: usageDetails, response })
     }
+
+    case 'antibot_blocked':
+      return new AntibotBlockedError(message, { status, errorName: name, response })
+
+    case 'too_many_redirects':
+      return new TooManyRedirectsError(message, { status, errorName: name, response })
+
+    case 'page_too_large':
+      return new PageTooLargeError(message, { status, errorName: name, response })
 
     case 'invalid_credentials':
     case 'access_denied':

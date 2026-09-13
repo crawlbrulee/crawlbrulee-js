@@ -20,11 +20,14 @@ export type { CrawlbruleeOptions, WaitForScrapeOptions } from './client.js'
 export type { HttpMethod, RequestOptions } from './http.js'
 
 export {
+  AntibotBlockedError,
   AuthenticationError,
   CrawlbruleeError,
   NotFoundError,
+  PageTooLargeError,
   RateLimitError,
   ServiceUnavailableError,
+  TooManyRedirectsError,
   TransportError,
   UsageAllocationError,
   ValidationError,

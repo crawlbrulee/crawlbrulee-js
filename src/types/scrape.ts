@@ -4,6 +4,9 @@ import type { ProxyTier, ResponseMeta, ScreenshotRequest, ScreenshotType } from 
  * Which content formats to extract from the scraped page. Every field is
  * optional; the server defaults are noted on each field. The default request
  * extracts `{ metadata: true, cleaned_html: true }`.
+ *
+ * `extract` only selects what is returned — changing it does not change whether
+ * an otherwise identical request can be served from cache.
  */
 export interface ScrapeExtract {
   /** Extract page metadata (title, description, OG/Twitter tags, etc.). Default `true`. */
@@ -36,7 +39,38 @@ export interface ScrapeExtract {
   screenshot?: ScreenshotRequest
 }
 
-/** Cache settings for a scrape request. */
+/**
+ * What is removed from the page before any output is built.
+ *
+ * Applies to `markdown`, `cleaned_html`, `links` and `images` on every engine,
+ * and to the screenshot. It never applies to `raw_html` — that is always the
+ * page as it arrived, before anything was removed.
+ */
+export interface ScrapeCleanup {
+  /**
+   * Remove ads, cookie banners, consent dialogs and chat widgets. Defaults to
+   * `true` server-side. Set it to `false` to capture the page as-is, or to get
+   * past a site that refuses to serve content to an ad-blocking client.
+   */
+  ads_and_popups?: boolean
+  /**
+   * CSS selectors whose elements are removed before anything is captured. Use
+   * it for a banner or widget `ads_and_popups` does not recognise.
+   *
+   * At most 100 selectors, each at most 500 characters. Sending any selector
+   * here makes the request skip the cache, so it always costs a live fetch.
+   */
+  exclude_selectors?: string[]
+}
+
+/**
+ * Cache settings for a scrape request. `max_age` is the only cache control.
+ * A cached result has to match the url, the screenshot setup (type, viewport,
+ * device mode), `cleanup.ads_and_popups` and `location.locale`, and
+ * `require_js: true` only matches browser-rendered results.
+ * `cleanup.exclude_selectors` and a non-zero `actions_before` wait or scroll
+ * disable caching for that request.
+ */
 export interface ScrapeCache {
   /**
    * Maximum cache age. Either a number of seconds (non-negative integer) or
@@ -63,10 +97,9 @@ export interface ScrapeLocation {
 /** Request body for `POST /api/scrape` (and `POST /api/scrape/async`). */
 export interface ScrapeRequest {
   /**
-   * The URL to scrape. Known tracking parameters (`utm_*`, `mtm_*`, `ga_*`, `pk_*`, `gclid`,
-   * `fbclid`, `msclkid`, and more) are removed before the page is fetched, so they reach
-   * neither the target site nor the cache key. Every other query parameter is kept verbatim
-   * and is part of the cache key.
+   * The URL to scrape. Known tracking parameters are removed before the page is
+   * fetched, so they reach neither the target site nor the cache. Every other query
+   * parameter is kept verbatim.
    */
   url: string
   /** Which content formats to extract. Defaults to `metadata + cleaned_html`. */
@@ -78,8 +111,14 @@ export interface ScrapeRequest {
    * and credits — only enable when the page requires it. Default `false`.
    */
   require_js?: boolean
-  /** CSS selectors to strip from the extracted content. */
-  exclude_selectors?: string[]
+  /**
+   * What is removed from the page before any output is built. Shapes
+   * `markdown`, `cleaned_html`, `links`, `images` and the screenshot.
+   *
+   * Never applies to `raw_html`, which is always the page before anything was
+   * removed.
+   */
+  cleanup?: ScrapeCleanup
   /**
    * Proxy tier to use for fetching. Defaults to `auto` (tries the basic tier
    * first, escalates to advanced on failure; billed at the delivered tier).
@@ -314,9 +353,7 @@ export interface ScrapeResponse {
    * Warnings are stored with the result, so cache hits and async result
    * fetches carry them too, filtered to the outputs you requested —
    * `raw_html_truncated` always surfaces, since a truncated body also feeds
-   * `markdown` and `cleaned_html`. The `*_unavailable` codes only ever reach
-   * the request whose own scrape degraded: a cached result missing a field you
-   * asked for is re-scraped rather than served.
+   * `markdown` and `cleaned_html`.
    */
   warnings?: (ScrapeWarningCode | (string & {}))[]
   /**

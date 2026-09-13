@@ -69,15 +69,6 @@ export type ScreenshotType = 'viewport' | 'full_page'
 /** Emulated device class for the viewport (drives default width/height). */
 export type ScreenshotDeviceMode = 'desktop' | 'mobile'
 
-/** Pre-capture cleanup options applied to the page before the screenshot. */
-export interface ScreenshotCleanup {
-  /**
-   * Remove ads, cookie banners, and popups before capturing. Defaults to
-   * `true` server-side.
-   */
-  ads_and_popups?: boolean
-}
-
 /** A `wait` action: pause for `ms` milliseconds before the next step. */
 export interface ScreenshotWaitAction {
   type: 'wait'
@@ -132,8 +123,6 @@ export interface ScreenshotRequest {
   viewport?: ScreenshotViewport
   /** Emulate desktop or mobile. Defaults to `desktop`. */
   device_mode?: ScreenshotDeviceMode
-  /** Page cleanup applied before capture. */
-  cleanup?: ScreenshotCleanup
   /** Pre-capture actions (waits and scrolls). Maximum 5 entries. */
   actions_before?: ScreenshotBeforeAction[]
   /** Post-capture actions (e.g. slice into tiles). Maximum 1 entry. */
@@ -169,6 +158,8 @@ export type ApiErrorName =
   | 'unsupported_screenshot_output'
   | 'validation_error'
   | 'antibot_blocked'
+  | 'too_many_redirects'
+  | 'page_too_large'
 
 /** Reason a usage allocation was denied (when `error_name = usage_allocation_error`). */
 export type UsageAllocationReason =

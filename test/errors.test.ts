@@ -1,11 +1,14 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  AntibotBlockedError,
   AuthenticationError,
   CrawlbruleeError,
   NotFoundError,
+  PageTooLargeError,
   RateLimitError,
   ServiceUnavailableError,
+  TooManyRedirectsError,
   TransportError,
   UsageAllocationError,
   ValidationError,
@@ -111,6 +114,94 @@ describe('Error mapping', () => {
     const client = buildClient(q.fetch)
 
     await expect(client.whoami()).rejects.toBeInstanceOf(ServiceUnavailableError)
+  })
+
+  it('maps 403 antibot_blocked to AntibotBlockedError, not AuthenticationError', async () => {
+    const q = createFetchQueue()
+    q.enqueue(jsonResponse({ name: 'antibot_blocked', message: 'blocked by the target site' }, 403))
+    const client = buildClient(q.fetch)
+
+    try {
+      await client.scrape({ url: 'https://example.com' })
+      throw new Error('expected throw')
+    } catch (err) {
+      expect(err).toBeInstanceOf(AntibotBlockedError)
+      // The site said no — the api key is fine, so this must never read as a
+      // credentials problem.
+      expect(err).not.toBeInstanceOf(AuthenticationError)
+      const e = err as AntibotBlockedError
+      expect(e.status).toBe(403)
+      expect(e.errorName).toBe('antibot_blocked')
+    }
+  })
+
+  it('maps 422 too_many_redirects to TooManyRedirectsError, not ValidationError', async () => {
+    const q = createFetchQueue()
+    q.enqueue(
+      jsonResponse(
+        {
+          name: 'too_many_redirects',
+          message: 'Target site redirected the request too many times.',
+        },
+        422
+      )
+    )
+    const client = buildClient(q.fetch)
+
+    try {
+      await client.scrape({ url: 'https://example.com' })
+      throw new Error('expected throw')
+    } catch (err) {
+      expect(err).toBeInstanceOf(TooManyRedirectsError)
+      // The target looped us — the request was fine, so this must never read
+      // as a bad request.
+      expect(err).not.toBeInstanceOf(ValidationError)
+      const e = err as TooManyRedirectsError
+      expect(e.status).toBe(422)
+      expect(e.errorName).toBe('too_many_redirects')
+    }
+  })
+
+  it('maps 422 page_too_large to PageTooLargeError, not ValidationError', async () => {
+    const q = createFetchQueue()
+    q.enqueue(
+      jsonResponse(
+        {
+          name: 'page_too_large',
+          message: 'The page is too large or too complex to convert.',
+        },
+        422
+      )
+    )
+    const client = buildClient(q.fetch)
+
+    try {
+      await client.scrape({ url: 'https://example.com' })
+      throw new Error('expected throw')
+    } catch (err) {
+      expect(err).toBeInstanceOf(PageTooLargeError)
+      // The page is the problem, not the request — this must never read as a
+      // bad request, and it shares its 422 with too_many_redirects.
+      expect(err).not.toBeInstanceOf(ValidationError)
+      expect(err).not.toBeInstanceOf(TooManyRedirectsError)
+      const e = err as PageTooLargeError
+      expect(e.status).toBe(422)
+      expect(e.errorName).toBe('page_too_large')
+    }
+  })
+
+  it('maps a 403 with an unrecognized name to AuthenticationError by status', async () => {
+    const q = createFetchQueue()
+    q.enqueue(jsonResponse({ name: 'scrape_error', message: 'nope' }, 403))
+    const client = buildClient(q.fetch)
+
+    try {
+      await client.whoami()
+      throw new Error('expected throw')
+    } catch (err) {
+      expect(err).toBeInstanceOf(AuthenticationError)
+      expect(err).not.toBeInstanceOf(AntibotBlockedError)
+    }
   })
 
   it('maps invalid_url to ValidationError', async () => {

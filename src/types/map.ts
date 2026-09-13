@@ -2,7 +2,13 @@ import type { ProxyTier, ResolvedProxyTier } from './common.js'
 
 /** Filter which link types appear in the map result. */
 export interface MapTypes {
-  /** Include internal links (same domain). Default `true`. */
+  /**
+   * Include internal links (same domain; `www.` and the bare domain count as
+   * the same site). Default `true`.
+   *
+   * Note this is only about *classifying* a link — the URLs that come back keep
+   * the host exactly as the site publishes it. See {@link MapLinkItem.url}.
+   */
   internal?: boolean
   /** Include links to subdomains of the target. Default `true`. */
   internal_subdomains?: boolean
@@ -41,14 +47,20 @@ export interface MapRequest {
   /** Cache settings for this request. */
   cache?: MapCache
   /**
-   * Maximum number of URLs to store in the map. Must be in `(0, 100 000]`.
-   * Defaults to 100 000.
+   * Maximum number of URLs to discover and store in the map. Must be in
+   * `(0, 100 000]`. Defaults to 5 000.
+   *
+   * Sitemap discovery stops as soon as this many URLs have been found, so a
+   * smaller value is a cheaper and faster crawl, not just a shorter answer. A
+   * map that stopped this way comes back with exactly `max_urls` links and
+   * {@link MapTruncation.discovery_cap_reason} set to `max_urls` — ask again
+   * with a higher `max_urls` to get more.
    */
   max_urls?: number
   /** 1-based page number for paginated results. Defaults to 1. */
   page?: number
   /**
-   * Number of URLs per page. Must be in `(0, 10 000]`. Defaults to 10 000.
+   * Number of URLs per page. Must be in `(0, 10 000]`. Defaults to 5 000.
    */
   limit?: number
   /** Optional country emulation. */
@@ -57,7 +69,10 @@ export interface MapRequest {
 
 /** Single discovered URL in a map result. */
 export interface MapLinkItem {
-  /** The discovered URL. */
+  /**
+   * The discovered URL, normalised the same way `/scrape` normalises the `url`
+   * it returns.
+   */
   url: string
 }
 
@@ -71,16 +86,51 @@ export interface MapPagination {
   has_more: boolean
 }
 
+/**
+ * Which limit stopped sitemap discovery first, or `null` when nothing stopped
+ * it.
+ *
+ * - `max_urls` — your own {@link MapRequest.max_urls} was reached. This is the
+ *   only reason you can do something about: ask again with a higher one.
+ * - `time` — discovery ran out of its time budget.
+ * - `file_budget` — the site has more sitemap files than one request reads.
+ * - `depth` — the site's sitemap indexes nest too deeply.
+ * - `file_size` — a sitemap file was too large to read.
+ */
+export type MapDiscoveryCapReason = 'max_urls' | 'time' | 'file_budget' | 'depth' | 'file_size'
+
 /** Information about whether the stored or returned map was truncated. */
 export interface MapTruncation {
-  /** Whether the stored map was capped by `max_urls`. */
+  /** Whether the stored map hit the 100 000-URL storage cap. */
   storage_capped: boolean
-  /** Whether the response was capped by pagination. */
+  /**
+   * Whether more links were eligible than `max_urls`, so the list was trimmed.
+   * Discovery itself stops at `max_urls`, so this is normally `true` only when
+   * home-page links pushed the total past it. A map that ran into the
+   * `max_urls` limit during discovery reports `response_capped: false` and
+   * signals the stop through {@link discovery_cap_reason} instead.
+   */
   response_capped: boolean
   /** Total URLs found before the `max_urls` cap was applied. */
   total_before_max_urls: number
   /** Total URLs detected during discovery before the storage cap was applied. */
   total_detected_before_storage_cap: number
+  /**
+   * Whether sitemap discovery stopped before it had read every sitemap file it
+   * found. When `true`, the site has more pages than this map lists.
+   */
+  discovery_capped: boolean
+  /**
+   * How many sitemap files were skipped or only partly read during discovery,
+   * because a file was too large, could not be fetched, or a discovery limit
+   * was reached. Integer `>= 0`.
+   */
+  sitemaps_skipped: number
+  /**
+   * Which limit stopped sitemap discovery first, or `null` when nothing did.
+   * Only `max_urls` is something you can change from the request.
+   */
+  discovery_cap_reason: MapDiscoveryCapReason | null
 }
 
 /** Billing engine reported by map: fresh discovery or a cached result. */
@@ -108,7 +158,11 @@ export interface MapResponseMeta {
 
 /** Success response from `POST /api/map`. */
 export interface MapResponse {
-  /** The current page of discovered URLs. */
+  /**
+   * The current page of discovered URLs.
+   *
+   * Ordering is stable, with the most useful links first.
+   */
   links: MapLinkItem[]
   /** Usage, pagination, and truncation metadata for the result set. */
   response_meta: MapResponseMeta

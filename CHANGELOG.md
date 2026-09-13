@@ -4,7 +4,52 @@ all notable changes to `@crawlbrulee/sdk` are documented here.
 
 this project follows [Semantic Versioning](https://semver.org). while on `0.x`, minor versions may include breaking changes.
 
-## unreleased
+## 0.15.0 (2026-09-13)
+
+### changed
+
+- **map defaults are smaller.** `max_urls` now defaults to `5000` (was `100000`) and `limit` to
+  `5000` (was `10000`); both maximums are unchanged (`100000` and `10000`). discovery itself stops
+  at `max_urls`, so a smaller value is a cheaper and faster crawl, not just a shorter answer. the
+  sdk sends only the fields you pass, so this is a server-side default change — nothing to update
+  in your code unless you were relying on the old implicit values.
+- **`MapTruncation.response_capped` means less than it used to.** because discovery stops at
+  `max_urls`, a map that ran into that limit returns exactly `max_urls` links with
+  `response_capped: false`. use `discovery_cap_reason` to tell whether more pages exist.
+
+### added
+
+- **three new fields on `MapTruncation`** (`response_meta.truncation`):
+  - `discovery_capped: boolean` — sitemap discovery stopped before reading every sitemap file it
+    found; when `true` the site has more pages than the map lists.
+  - `sitemaps_skipped: number` — how many sitemap files were skipped or only partly read.
+  - `discovery_cap_reason: MapDiscoveryCapReason | null` — which limit stopped discovery first,
+    `null` when nothing did. only `max_urls` is actionable from the request.
+- **`MapDiscoveryCapReason`** — new exported type,
+  `'max_urls' | 'time' | 'file_budget' | 'depth' | 'file_size'`.
+
+- **`AntibotBlockedError`** — a `403` with `name: 'antibot_blocked'` (the target site's bot
+  protection blocked the request) now raises its own class instead of `AuthenticationError`,
+  so callers can branch on it (raise the proxy tier, or skip the site) without mistaking it
+  for a credentials problem. returned by both `scrape` and `map`. a `403` with an
+  unrecognized name still falls back to `AuthenticationError`.
+- **`TooManyRedirectsError`** — a `422` with `name: 'too_many_redirects'` (the target site
+  redirected the request in a loop, or through more hops than the api follows) raises its own
+  class. target-side like `AntibotBlockedError`: not a key problem and not a bad request, so it
+  is neither `AuthenticationError` nor `ValidationError`. returned by both `scrape` and `map`.
+- **`PageTooLargeError`** — a `422` with `name: 'page_too_large'` (the page's html was too large
+  to process) raises its own class. about the page, not your request, so it is neither
+  `AuthenticationError` nor `ValidationError`. it is terminal: the same url fails the same way,
+  so do not retry it. returned by `scrape`.
+
+## 0.13.1 (2026-09-03)
+
+### fixed
+
+- commonjs consumers now resolve the matching `index.d.cts` declarations instead of the esm
+  `index.d.ts` file, preventing `TS1479` in projects that compile imports to `require()`.
+
+## 0.13.0 (2026-09-02)
 
 ### changed (breaking)
 
@@ -64,8 +109,7 @@ this project follows [Semantic Versioning](https://semver.org). while on `0.x`, 
   the sync scrape path and dropped them everywhere else. they are now stored with the result, so cache hits
   and async result fetches report the same codes, filtered to the outputs you requested —
   `raw_html_truncated` always surfaces, since a truncated body also feeds `markdown` and `cleaned_html`.
-  the `*_unavailable` codes are the exception and only ever reach the request whose own scrape degraded:
-  a cached result missing a field you asked for is re-scraped rather than served.
+  the `*_unavailable` codes are the exception: they only ever reach the request they were produced for.
 
 ## 0.10.0 (2026-08-03)
 
@@ -87,9 +131,8 @@ this project follows [Semantic Versioning](https://semver.org). while on `0.x`, 
 
 - **`ScrapeResponse.requested_url`** — the url you requested, echoed verbatim, before any redirects.
   present on both the sync scrape response and the async result. it sits alongside `url`, which is
-  now documented precisely: the url that was actually scraped, after any redirects, in cleaned
-  canonical form (tracking params and fragment removed) — the base that `links`, `images`, and
-  `internal` labels are computed against.
+  now documented precisely: the url that was actually scraped, after any redirects, in normalised
+  form — the base that `links`, `images`, and `internal` labels are computed against.
 - **`unsupported_screenshot_output`** joined the `ApiErrorName` union. the sdk maps it to
   `ValidationError`, alongside `unsupported_content`.
 
@@ -113,15 +156,14 @@ this project follows [Semantic Versioning](https://semver.org). while on `0.x`, 
 
 - **`ScrapeCache.ignore_query_params` is gone**, because the api no longer accepts it — `cache` is
   strict, so a request carrying the field is rejected. `max_age` is now the only cache control.
-  if you were setting it, drop it and send the url you actually want cached: every non-tracking
-  query parameter is part of the cache key, so `https://example.com/page` and
-  `https://example.com/page?ref=x` are separate entries.
+  if you were setting it, drop it and send the url you actually want cached:
+  `https://example.com/page` and `https://example.com/page?ref=x` are separate entries.
 
 ### changed
 
-- the `url` field is documented more precisely: known tracking parameters (`utm_*`, `mtm_*`, `ga_*`,
-  `pk_*`, `gclid`, `fbclid`, `msclkid`, and more) are removed before the page is fetched, so they
-  reach neither the target site nor the cache key. every other query parameter is kept verbatim.
+- the `url` field is documented more precisely: known tracking parameters are removed before the page
+  is fetched, so they reach neither the target site nor the cache. every other query parameter is kept
+  verbatim.
 
 ## 0.7.1 (2026-07-19)
 
@@ -173,7 +215,7 @@ this project follows [Semantic Versioning](https://semver.org). while on `0.x`, 
 
 ### added
 
-- **`response_meta.usage` envelope.** scrape responses and the map response now carry usage accounting at
+- **`response_meta.usage` object.** scrape responses and the map response now carry usage accounting at
   `response_meta.usage`: `{ credits, proxy, cache_hit }` — `credits` is the credits charged (`0` on a cache hit), `proxy`
   is the resolved proxy tier actually used (`'basic' | 'advanced'`, never `'auto'`), and `cache_hit` indicates
   whether the result was served from cache.
