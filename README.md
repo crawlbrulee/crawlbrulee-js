@@ -16,7 +16,7 @@ this readme covers the sdk itself — the client, the types, and the js-side erg
 the api behaves — endpoints, parameters, and error semantics — please see our
 [api docs](https://crawlbrulee.com/docs).
 
-> **status:** v0.13.1 (beta). the api surface is stabilizing — expect minor breaking changes between 0.x releases.
+> **status:** v0.16.0 (beta). the api surface is stabilizing — expect minor breaking changes between 0.x releases.
 
 **get a free api key** → [dashboard.crawlbrulee.com](https://dashboard.crawlbrulee.com)
 
@@ -131,7 +131,7 @@ the response carries the extracted content alongside structured `metadata` (the 
 page.metadata?.title // structured <head> metadata (when extract.metadata, on by default)
 
 page.response_meta.usage.credits // credits charged
-page.response_meta.usage.engine // billed base: 'text' | 'browser' | 'screenshot' | 'cache'
+page.response_meta.usage.engine // billed base: 'http' | 'browser' | 'screenshot' | 'cache'
 page.response_meta.usage.proxy // the resolved proxy tier actually used: 'basic' | 'advanced' (never 'auto')
 page.response_meta.usage.screenshot_slices // billed slice add-on: 0 or 1
 ```

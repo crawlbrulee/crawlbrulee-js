@@ -134,13 +134,13 @@ export interface MapTruncation {
 }
 
 /** Billing engine reported by map: fresh discovery or a cached result. */
-export type MapBillingEngine = 'text' | 'cache'
+export type MapBillingEngine = 'http' | 'cache'
 
 /** Usage accounting returned by the map endpoint. Map operations do not produce screenshot slices. */
 export interface MapUsage {
   /** Credits charged for this operation. */
   credits: number
-  /** `text` for fresh discovery or `cache` for a cached result. */
+  /** `http` for fresh discovery or `cache` for a cached result. */
   engine: MapBillingEngine
   /** The proxy tier the server resolved and used (never `auto`). */
   proxy: ResolvedProxyTier

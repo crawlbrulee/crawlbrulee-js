@@ -16,7 +16,7 @@
  *     "url": "https://…",
  *     "completed_at": "…",
  *     "metadata": { "tenant": "acme" },
- *     "response_meta": { "usage": { "credits": 1, "engine": "text", "proxy": "basic", "screenshot_slices": 0 } }
+ *     "response_meta": { "usage": { "credits": 1, "engine": "http", "proxy": "basic", "screenshot_slices": 0 } }
  *   }
  * }
  * ```

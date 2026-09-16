@@ -4,6 +4,16 @@ all notable changes to `@crawlbrulee/sdk` are documented here.
 
 this project follows [Semantic Versioning](https://semver.org). while on `0.x`, minor versions may include breaking changes.
 
+## 0.16.0 (2026-09-17)
+
+### changed (breaking)
+
+- **the `http` engine replaces `text`.** `response_meta.usage.engine` now reports `http` for a
+  result the plain fetch engine delivered (no JavaScript run), where it used to report `text`.
+  `BillingEngine` is now `'http' | 'browser' | 'screenshot' | 'cache'` and `MapBillingEngine` is
+  `'http' | 'cache'`. the credit base is unchanged (1 credit before the proxy multiplier). update
+  any code that compares `engine` to `'text'`.
+
 ## 0.15.0 (2026-09-13)
 
 ### changed

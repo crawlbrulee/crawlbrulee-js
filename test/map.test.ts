@@ -15,7 +15,7 @@ function mapResponse(
   return {
     links: overrides.links ?? [{ url: 'https://example.com/' }],
     response_meta: {
-      usage: overrides.usage ?? { credits: 1, engine: 'text', proxy: 'basic' },
+      usage: overrides.usage ?? { credits: 1, engine: 'http', proxy: 'basic' },
       pagination: overrides.pagination ?? {
         page: 1,
         limit: 5000,
@@ -43,7 +43,7 @@ describe('Crawlbrulee.map', () => {
       jsonResponse({
         links: [{ url: 'https://example.com/' }, { url: 'https://example.com/about' }],
         response_meta: {
-          usage: { credits: 1, engine: 'text', proxy: 'basic' },
+          usage: { credits: 1, engine: 'http', proxy: 'basic' },
           pagination: { page: 1, limit: 100, total: 2, total_pages: 1, has_more: false },
           truncation: {
             storage_capped: false,
@@ -77,7 +77,7 @@ describe('Crawlbrulee.map', () => {
     })
     expect(res.links).toHaveLength(2)
     expect(res.response_meta.pagination.has_more).toBe(false)
-    expect(res.response_meta.usage).toEqual({ credits: 1, engine: 'text', proxy: 'basic' })
+    expect(res.response_meta.usage).toEqual({ credits: 1, engine: 'http', proxy: 'basic' })
     expect(res.response_meta.usage).not.toHaveProperty('screenshot_slices')
     expect(res.response_meta.truncation.discovery_capped).toBe(false)
     expect(res.response_meta.truncation.sitemaps_skipped).toBe(0)

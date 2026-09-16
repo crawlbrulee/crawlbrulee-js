@@ -24,7 +24,7 @@ export type ResolvedProxyTier = 'basic' | 'advanced'
  * Engine base the operation was billed at. This reflects what the server
  * delivered, not what the request asked for. `cache` identifies a cache hit.
  */
-export type BillingEngine = 'text' | 'browser' | 'screenshot' | 'cache'
+export type BillingEngine = 'http' | 'browser' | 'screenshot' | 'cache'
 
 /**
  * Usage accounting for a single billable scrape operation, returned on the
@@ -38,7 +38,7 @@ export interface Usage {
    */
   credits: number
   /**
-   * Engine base billed for the delivered result: `text` (1), `browser` (3),
+   * Engine base billed for the delivered result: `http` (1), `browser` (3),
    * `screenshot` (5), or `cache` (0).
    */
   engine: BillingEngine
