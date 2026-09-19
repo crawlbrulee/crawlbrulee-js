@@ -357,8 +357,8 @@ export interface ScrapeResponse {
    */
   warnings?: (ScrapeWarningCode | (string & {}))[]
   /**
-   * Response envelope metadata. Carries `usage` (credits charged, resolved
-   * proxy tier, and whether the result was a cache hit).
+   * Response envelope metadata. Carries `usage` (credits charged, billing
+   * engine, resolved proxy tier, and billed screenshot slices).
    */
   response_meta: ResponseMeta
 }
