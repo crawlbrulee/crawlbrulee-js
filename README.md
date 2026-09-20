@@ -16,7 +16,7 @@ this readme covers the sdk itself — the client, the types, and the js-side erg
 the api behaves — endpoints, parameters, and error semantics — please see our
 [api docs](https://crawlbrulee.com/docs).
 
-> **status:** v0.16.0 (beta). the api surface is stabilizing — expect minor breaking changes between 0.x releases.
+> **status:** v0.16.1 (beta). the api surface is stabilizing — expect minor breaking changes between 0.x releases.
 
 **get a free api key** → [dashboard.crawlbrulee.com](https://dashboard.crawlbrulee.com)
 
@@ -240,17 +240,26 @@ const { truncation } = result.response_meta
 
 if (truncation.discovery_capped) {
   // the site has more pages than this map lists
-  console.log('stopped by:', truncation.discovery_cap_reason) // 'max_urls' | 'time' | 'file_budget' | 'depth' | 'file_size'
+  // 'max_urls' | 'time' | 'file_budget' | 'depth' | 'file_size' | 'unread_files'
+  console.log('stopped by:', truncation.discovery_cap_reason)
   console.log(truncation.sitemaps_skipped, 'sitemap files skipped or partly read')
 }
 
 if (truncation.discovery_cap_reason === 'max_urls') {
   // the only reason you can fix from the request — ask again with a higher max_urls
 }
+
+if (truncation.discovery_cap_reason === 'unread_files') {
+  // a sitemap file could not be read this time — try the same request again later
+}
 ```
 
+`unread_files` means a sitemap file the site publishes could not be read at all this time: the request for it failed or
+was rate limited, or the file was not a readable sitemap. that is often temporary, so asking again later can return a
+fuller map.
+
 every other reason (`time`, `file_budget`, `depth`, `file_size`) means the site itself is big, slow or deeply nested;
-re-asking with a higher `max_urls` will not return more.
+re-asking with a higher `max_urls` will not return more, and neither will trying again later.
 
 #### url shape and ordering
 

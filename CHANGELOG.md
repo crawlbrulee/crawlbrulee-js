@@ -4,6 +4,16 @@ all notable changes to `@crawlbrulee/sdk` are documented here.
 
 this project follows [Semantic Versioning](https://semver.org). while on `0.x`, minor versions may include breaking changes.
 
+## 0.16.1 (2026-09-20)
+
+### added
+
+- **`unread_files` is a sixth `MapDiscoveryCapReason`.** `response_meta.truncation.discovery_cap_reason`
+  can report `unread_files` when a sitemap file the site publishes could not be read at all this
+  time — the request for it failed or was rate limited, or the file was not a readable sitemap.
+  the api can return it; the type was missing it. unlike `time`, `file_budget`, `depth` and
+  `file_size`, this one is often temporary, so asking again later can return a fuller map.
+
 ## 0.16.0 (2026-09-17)
 
 ### changed (breaking)

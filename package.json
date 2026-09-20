@@ -1,6 +1,6 @@
 {
   "name": "@crawlbrulee/sdk",
-  "version": "0.16.0",
+  "version": "0.16.1",
   "description": "Official TypeScript / JavaScript SDK for crawlbrulee - web-scraping API.",
   "keywords": [
     "crawlbrulee",

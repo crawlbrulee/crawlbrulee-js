@@ -154,4 +154,51 @@ describe('Crawlbrulee.map', () => {
 
     expect(reason).toBe('file_budget')
   })
+
+  it('reports the retryable unread_files stop reason verbatim', async () => {
+    const q = createFetchQueue()
+    q.enqueue(
+      jsonResponse(
+        mapResponse({
+          truncation: {
+            storage_capped: false,
+            response_capped: false,
+            total_before_max_urls: 1,
+            total_detected_before_storage_cap: 1,
+            discovery_capped: true,
+            sitemaps_skipped: 2,
+            discovery_cap_reason: 'unread_files',
+          },
+        })
+      )
+    )
+    const client = buildClient(q.fetch)
+
+    const res = await client.map({ url: 'https://example.com' })
+    const reason: MapDiscoveryCapReason | null = res.response_meta.truncation.discovery_cap_reason
+
+    expect(reason).toBe('unread_files')
+  })
+
+  it('types every discovery stop reason the api can return', () => {
+    // A Record over the union fails `pnpm typecheck` when a value is missing
+    // from this list or from the type, so the two cannot drift apart silently.
+    const reasons: Record<MapDiscoveryCapReason, true> = {
+      max_urls: true,
+      time: true,
+      file_budget: true,
+      depth: true,
+      file_size: true,
+      unread_files: true,
+    }
+
+    expect(Object.keys(reasons)).toEqual([
+      'max_urls',
+      'time',
+      'file_budget',
+      'depth',
+      'file_size',
+      'unread_files',
+    ])
+  })
 })

@@ -91,13 +91,24 @@ export interface MapPagination {
  * it.
  *
  * - `max_urls` — your own {@link MapRequest.max_urls} was reached. This is the
- *   only reason you can do something about: ask again with a higher one.
+ *   only reason you can do something about from the request: ask again with a
+ *   higher one.
  * - `time` — discovery ran out of its time budget.
  * - `file_budget` — the site has more sitemap files than one request reads.
  * - `depth` — the site's sitemap indexes nest too deeply.
  * - `file_size` — a sitemap file was too large to read.
+ * - `unread_files` — a sitemap file the site publishes could not be read at all
+ *   this time: the request for it failed or was rate limited, or the file was
+ *   not a readable sitemap. This one is often temporary, so asking again later
+ *   can return more.
  */
-export type MapDiscoveryCapReason = 'max_urls' | 'time' | 'file_budget' | 'depth' | 'file_size'
+export type MapDiscoveryCapReason =
+  | 'max_urls'
+  | 'time'
+  | 'file_budget'
+  | 'depth'
+  | 'file_size'
+  | 'unread_files'
 
 /** Information about whether the stored or returned map was truncated. */
 export interface MapTruncation {
@@ -128,7 +139,8 @@ export interface MapTruncation {
   sitemaps_skipped: number
   /**
    * Which limit stopped sitemap discovery first, or `null` when nothing did.
-   * Only `max_urls` is something you can change from the request.
+   * Only `max_urls` is something you can change from the request. `unread_files`
+   * is often temporary, so asking again later can return more.
    */
   discovery_cap_reason: MapDiscoveryCapReason | null
 }
