@@ -16,8 +16,6 @@ this readme covers the sdk itself — the client, the types, and the js-side erg
 the api behaves — endpoints, parameters, and error semantics — please see our
 [api docs](https://crawlbrulee.com/docs).
 
-> **status:** v0.16.1 (beta). the api surface is stabilizing — expect minor breaking changes between 0.x releases.
-
 **get a free api key** → [dashboard.crawlbrulee.com](https://dashboard.crawlbrulee.com)
 
 ---
@@ -482,4 +480,4 @@ docs: [crawlbrulee.com/docs](https://crawlbrulee.com/docs) · dashboard: [dashbo
 
 ## license
 
-[AGPL-3.0-only](./LICENSE)
+[Apache-2.0](./LICENSE)

@@ -1,6 +1,6 @@
 {
   "name": "@crawlbrulee/sdk",
-  "version": "0.16.1",
+  "version": "1.0.0",
   "description": "Official TypeScript / JavaScript SDK for crawlbrulee - web-scraping API.",
   "keywords": [
     "crawlbrulee",
@@ -12,7 +12,7 @@
     "screenshot",
     "sitemap"
   ],
-  "license": "AGPL-3.0-only",
+  "license": "Apache-2.0",
   "type": "module",
   "packageManager": "pnpm@10.10.0",
   "sideEffects": false,
@@ -46,7 +46,8 @@
   "files": [
     "dist",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "NOTICE"
   ],
   "engines": {
     "node": ">=22"
