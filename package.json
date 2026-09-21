@@ -1,7 +1,7 @@
 {
   "name": "@crawlbrulee/sdk",
-  "version": "1.0.0",
-  "description": "Official TypeScript / JavaScript SDK for crawlbrulee - web-scraping API.",
+  "version": "1.0.1",
+  "description": "official js/ts sdk for crawlbrulee — EU-native web scraping for AI agents & developers. any url to clean markdown, screenshots, metadata and links.",
   "keywords": [
     "crawlbrulee",
     "sdk",
@@ -10,7 +10,13 @@
     "crawler",
     "web-scraping",
     "screenshot",
-    "sitemap"
+    "sitemap",
+    "eu",
+    "gdpr",
+    "ai-agents",
+    "llm",
+    "rag",
+    "markdown"
   ],
   "license": "Apache-2.0",
   "type": "module",
@@ -20,7 +26,7 @@
     "type": "git",
     "url": "git+https://github.com/crawlbrulee/crawlbrulee-js.git"
   },
-  "homepage": "https://github.com/crawlbrulee/crawlbrulee-js#readme",
+  "homepage": "https://crawlbrulee.com",
   "bugs": {
     "url": "https://github.com/crawlbrulee/crawlbrulee-js/issues"
   },

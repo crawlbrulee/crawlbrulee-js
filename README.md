@@ -4,8 +4,18 @@
 [![types](https://img.shields.io/npm/types/@crawlbrulee/sdk?style=flat-square&label=types)](https://www.npmjs.com/package/@crawlbrulee/sdk)
 [![license](https://img.shields.io/npm/l/@crawlbrulee/sdk?style=flat-square&label=license)](./LICENSE)
 
-the official js/ts sdk for the [crawlbrulee](https://crawlbrulee.com) web-scraping api — published to npm as [`@crawlbrulee/sdk`](https://www.npmjs.com/package/@crawlbrulee/sdk). you
-send a url, you get back markdown, cleaned html, links, images, metadata, or a screenshot.
+**EU-native web scraping for AI agents & developers.**
+
+the official js/ts sdk for [crawlbrulee](https://crawlbrulee.com), published to npm as [`@crawlbrulee/sdk`](https://www.npmjs.com/package/@crawlbrulee/sdk). one call turns any url into clean markdown, screenshots, metadata and links. a typed client with auth, retries, and error mapping built in.
+
+- **everything runs in the EU.** the fetch, the render, the cache and your result never leave EU servers. the proxy exit is the one hop you choose: pick an EU exit and nothing leaves at all. gdpr-aligned, with a data processing agreement.
+- **output made for models.** markdown with the page chrome stripped and the links kept, ready for the prompt. full-page screenshots can come back as tiles sized for an image model.
+- **the hard parts, handled.** headless Chrome when a page needs it, rotating proxies with country selection, automatic retries, ad and cookie-banner removal, caching, background jobs and signed webhooks.
+- **start free.** 750 credits, no credit card.
+
+**get a free api key** → [dashboard.crawlbrulee.com](https://dashboard.crawlbrulee.com)
+
+the sdk:
 
 - fully typed.
 - ESM + CommonJS, ships its own `.d.ts`.
@@ -15,8 +25,6 @@ send a url, you get back markdown, cleaned html, links, images, metadata, or a s
 this readme covers the sdk itself — the client, the types, and the js-side ergonomics. for how
 the api behaves — endpoints, parameters, and error semantics — please see our
 [api docs](https://crawlbrulee.com/docs).
-
-**get a free api key** → [dashboard.crawlbrulee.com](https://dashboard.crawlbrulee.com)
 
 ---
 
