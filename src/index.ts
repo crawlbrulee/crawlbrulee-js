@@ -27,6 +27,7 @@ export {
   PageTooLargeError,
   RateLimitError,
   ServiceUnavailableError,
+  TargetUnreachableError,
   TooManyRedirectsError,
   TransportError,
   UsageAllocationError,

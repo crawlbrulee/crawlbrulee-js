@@ -112,6 +112,24 @@ describe('Crawlbrulee — async scrape lifecycle', () => {
     expect(lastCallOf(q.mock).url).toBe('https://api.test.example/api/scrape/result/job-123')
     expect(res.markdown).toBe('# done')
   })
+
+  it('getScrapeResult returns a 404 page as a result carrying page_status_code', async () => {
+    const q = createFetchQueue()
+    q.enqueue(
+      jsonResponse({
+        url: 'https://example.com/missing',
+        requested_url: 'https://example.com/missing',
+        page_status_code: 404,
+        markdown: '# Not found',
+      })
+    )
+    const client = buildClient(q.fetch)
+
+    const res = await client.getScrapeResult('job-404')
+
+    expect(res.page_status_code).toBe(404)
+    expect(res.markdown).toBe('# Not found')
+  })
 })
 
 describe('Crawlbrulee.waitForScrape', () => {

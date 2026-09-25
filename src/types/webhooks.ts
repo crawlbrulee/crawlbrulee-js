@@ -14,9 +14,21 @@
  *     "job_id": "job_…",
  *     "status": "success",
  *     "url": "https://…",
+ *     "page_status_code": 200,
  *     "completed_at": "…",
  *     "metadata": { "tenant": "acme" },
- *     "response_meta": { "usage": { "credits": 1, "engine": "http", "proxy": "basic", "screenshot_slices": 0 } }
+ *     "response_meta": {
+ *       "usage": {
+ *         "total_credit_cost": 1,
+ *         "engine_credit_cost": 1,
+ *         "proxy_multiplier": 1,
+ *         "screenshot_slicing_credit_cost": 0,
+ *         "engine": "http",
+ *         "proxy": "basic",
+ *         "credits": 1,
+ *         "screenshot_slices": 0
+ *       }
+ *     }
  *   }
  * }
  * ```
@@ -35,6 +47,15 @@ export interface ScrapeCompleteWebhookData {
   status: ScrapeWebhookStatus
   /** The URL that was scraped. */
   url: string
+  /**
+   * The HTTP status the target site answered with for the final page, after
+   * redirects. Present only on `status: 'success'` deliveries. A 404 page is a
+   * `success` delivery with `page_status_code: 404` — see
+   * `ScrapeResponse.page_status_code`.
+   *
+   * Optional also because older api versions do not send it.
+   */
+  page_status_code?: number
   /** ISO-8601 UTC timestamp when the job reached its terminal state. */
   completed_at: string
   /** Failure message — present only when `status === 'failed'`. */
@@ -45,9 +66,9 @@ export interface ScrapeCompleteWebhookData {
    */
   metadata?: Record<string, unknown>
   /**
-   * Response envelope metadata — `usage` (credits charged, billing engine,
-   * resolved proxy tier, and billed screenshot slices). Present only on `status: 'success'`
-   * deliveries; omitted for `failed` / `cancelled` (no usage was charged).
+   * Response metadata — `usage`: the credits charged and how they add up
+   * (see `Usage`). Present only on `status: 'success'` deliveries;
+   * omitted for `failed` / `cancelled` (nothing was charged).
    */
   response_meta?: ResponseMeta
 }

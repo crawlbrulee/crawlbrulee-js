@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, expectTypeOf, it } from 'vitest'
 
-import type { MapDiscoveryCapReason, MapResponse } from '../src/index.js'
+import type { MapDiscoveryCapReason, MapResponse, MapUsage } from '../src/index.js'
 import { buildClient, createFetchQueue, jsonResponse, lastCallOf } from './helpers.js'
 
 /** Minimal valid `/api/map` body; callers override only what the test is about. */
@@ -200,5 +200,54 @@ describe('Crawlbrulee.map', () => {
       'file_size',
       'unread_files',
     ])
+  })
+})
+
+describe('Crawlbrulee.map — usage fields', () => {
+  it('reads the new usage fields next to the deprecated credits', async () => {
+    const q = createFetchQueue()
+    q.enqueue(
+      jsonResponse(
+        mapResponse({
+          usage: {
+            total_credit_cost: 5,
+            engine_credit_cost: 1,
+            proxy_multiplier: 5,
+            engine: 'http',
+            proxy: 'advanced',
+            credits: 5,
+          },
+        })
+      )
+    )
+    const client = buildClient(q.fetch)
+
+    const { response_meta } = await client.map({ url: 'https://example.com' })
+    const usage = response_meta.usage
+
+    expect(usage.total_credit_cost).toBe(5)
+    expect(usage.engine_credit_cost).toBe(1)
+    expect(usage.proxy_multiplier).toBe(5)
+    expect(usage.credits).toBe(usage.total_credit_cost)
+    expect(usage).not.toHaveProperty('screenshot_slicing_credit_cost')
+  })
+
+  it('still reads map usage from an api without the new fields', async () => {
+    const q = createFetchQueue()
+    q.enqueue(jsonResponse(mapResponse({ usage: { credits: 1, engine: 'http', proxy: 'basic' } })))
+    const client = buildClient(q.fetch)
+
+    const { response_meta } = await client.map({ url: 'https://example.com' })
+
+    expect(response_meta.usage.total_credit_cost).toBeUndefined()
+    expect(response_meta.usage.total_credit_cost ?? response_meta.usage.credits).toBe(1)
+  })
+
+  it('types the new map usage fields as optional numbers and keeps credits required', () => {
+    expectTypeOf<MapUsage['total_credit_cost']>().toEqualTypeOf<number | undefined>()
+    expectTypeOf<MapUsage['engine_credit_cost']>().toEqualTypeOf<number | undefined>()
+    expectTypeOf<MapUsage['proxy_multiplier']>().toEqualTypeOf<number | undefined>()
+    expectTypeOf<MapUsage['credits']>().toEqualTypeOf<number>()
+    expectTypeOf<MapUsage>().not.toHaveProperty('screenshot_slicing_credit_cost')
   })
 })

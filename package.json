@@ -1,6 +1,6 @@
 {
   "name": "@crawlbrulee/sdk",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "official js/ts sdk for crawlbrulee — EU-native web scraping for AI agents & developers. any url to clean markdown, screenshots, metadata and links.",
   "keywords": [
     "crawlbrulee",

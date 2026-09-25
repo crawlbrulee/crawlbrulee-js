@@ -4,6 +4,48 @@ all notable changes to `@crawlbrulee/sdk` are documented here.
 
 this project follows [Semantic Versioning](https://semver.org). while on `0.x`, minor versions may include breaking changes.
 
+## 1.1.0 (unreleased)
+
+### added
+
+- **`page_status_code` on scrape results.** the http status the target site answered with for the final page, after
+  redirects. it is on `ScrapeResponse` (from `scrape()`, `getScrapeResult()` and `waitForScrape()`) and on the
+  `scrape.complete` webhook `data` for `success` deliveries. it is optional in the types, because older api versions do
+  not send it.
+- **`TargetUnreachableError`** — a `502` with `name: 'target_unreachable'` raises its own class. we could not reach the
+  target site at all, so there is no page and you are not charged. the message is always "Could not reach the target
+  site." and there are no `details`. retrying later may help; the sdk does not retry for you. returned by both `scrape`
+  and `map`. `'target_unreachable'` is added to `ApiErrorName`. a `502` with any other name still raises the base
+  `CrawlbruleeError`.
+- **the usage breakdown.** `response_meta.usage` now explains its own price:
+  `total_credit_cost = engine_credit_cost × proxy_multiplier + screenshot_slicing_credit_cost`.
+  - `Usage` (scrape, async status, webhook) gains `total_credit_cost`, `engine_credit_cost`, `proxy_multiplier` and
+    `screenshot_slicing_credit_cost`.
+  - `MapUsage` gains `total_credit_cost`, `engine_credit_cost` and `proxy_multiplier` (a map makes no screenshots, so
+    there is no slicing part).
+  - all of them are optional in the types, because older api versions do not send them. to read the total either way,
+    use `usage.total_credit_cost ?? usage.credits`.
+
+### changed
+
+- **a page with an error status is a result, not an error.** when the site answers with a 404, 410, 401, 503 or any other
+  page, the api returns that page with its status in `page_status_code`, and `scrape()` resolves instead of throwing.
+  this comes from the api, so it reaches every sdk version once the api ships it; this release adds the field and the
+  docs. check `page_status_code` if your code relied on an error for a missing page.
+- **what is billed follows the page's status.** 2xx and 4xx pages are billed, except 403, 407, 408, 429 and 451; 5xx
+  pages are never billed. an unbilled page reports `0` in every cost field.
+- **`NotFoundError` only means something on our side was not found**, like an unknown async job id. it never means the
+  target page was not found.
+
+### deprecated
+
+- **`Usage.credits`** — use `total_credit_cost`, which always has the same value.
+- **`Usage.screenshot_slices`** — use `screenshot_slicing_credit_cost`, which always has the same value. despite its
+  name it is a 0/1 charge, not a count of slices.
+- **`MapUsage.credits`** — use `total_credit_cost`.
+
+the api still sends these fields and the types still have them. they will be removed in a future version.
+
 ## 1.0.1 (2026-09-21)
 
 ### changed

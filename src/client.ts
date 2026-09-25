@@ -127,6 +127,13 @@ export class Crawlbrulee {
    * (heavy JS rendering, screenshots of long pages) prefer
    * {@link Crawlbrulee.scrapeAsync} so the connection isn't held open.
    *
+   * Any page the site really served is returned, whatever its status: a 404,
+   * 410, 401 or 503 page resolves normally, with the site's status in
+   * `page_status_code` — it does not throw. Check that field when the page's
+   * status matters to you. The call throws when we could not return the page,
+   * for example `TargetUnreachableError` when the site could not be reached,
+   * `AntibotBlockedError`, or `PageTooLargeError`.
+   *
    * @param request — body for `POST /api/scrape`.
    * @param options — per-call timeout and abort signal.
    */
@@ -160,6 +167,10 @@ export class Crawlbrulee {
    * Fetch the result of a completed async scrape job. Throws if the job is
    * still pending/running — call {@link Crawlbrulee.getScrapeStatus}
    * first, or use {@link Crawlbrulee.waitForScrape} to poll-then-fetch.
+   *
+   * Like {@link Crawlbrulee.scrape}, a 404 (or any other) page the site served
+   * is a completed job: the result carries the site's status in
+   * `page_status_code`.
    */
   getScrapeResult(jobId: string, options?: RequestOptions): Promise<ScrapeResponse> {
     assertNonEmptyJobId(jobId)

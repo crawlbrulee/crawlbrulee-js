@@ -120,6 +120,32 @@ export class PageTooLargeError extends CrawlbruleeError {
 }
 
 /**
+ * Raised when we could not reach the target site at all (HTTP 502,
+ * `target_unreachable`) — for example the site did not answer in time or its
+ * TLS certificate was not valid. We never got a page, so there is nothing to
+ * return and you are not charged. The message is always "Could not reach the
+ * target site." and there are no `details`.
+ *
+ * This is about the site, not your key or your request, so it is neither an
+ * `AuthenticationError` nor a `ValidationError`. It is also not our own
+ * outage ({@link ServiceUnavailableError}). Retrying later may help, since
+ * the site may come back. The SDK does not retry for you.
+ *
+ * Not the same as a page with an error status: when the site answers with a
+ * 404 or 503 page, the scrape succeeds and the site's status is in
+ * `page_status_code`. Returned by both `scrape` and `map`.
+ */
+export class TargetUnreachableError extends CrawlbruleeError {
+  constructor(
+    message: string,
+    options: { status: number; errorName: ApiErrorName; response?: ApiErrorResponse }
+  ) {
+    super(message, options)
+    this.name = 'TargetUnreachableError'
+  }
+}
+
+/**
  * Raised for HTTP 429 responses. When the server included a `retry_after_ms`
  * hint in `details` it is surfaced directly on the instance.
  *
@@ -190,7 +216,14 @@ export class ValidationError extends CrawlbruleeError {
   }
 }
 
-/** Raised for 404 responses (e.g. unknown async job ID). */
+/**
+ * Raised for 404 responses from the crawlbrulee api — something on our side
+ * was not found, for example an unknown or expired async job ID.
+ *
+ * It never means the target page was not found. When the site you scrape
+ * answers with a 404 page, the scrape succeeds and returns that page with
+ * `page_status_code: 404`.
+ */
 export class NotFoundError extends CrawlbruleeError {
   constructor(
     message: string,
@@ -291,6 +324,9 @@ export function createApiError(body: ApiErrorResponse, status: number): Crawlbru
 
     case 'page_too_large':
       return new PageTooLargeError(message, { status, errorName: name, response })
+
+    case 'target_unreachable':
+      return new TargetUnreachableError(message, { status, errorName: name, response })
 
     case 'invalid_credentials':
     case 'access_denied':

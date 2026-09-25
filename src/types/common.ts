@@ -27,19 +27,48 @@ export type ResolvedProxyTier = 'basic' | 'advanced'
 export type BillingEngine = 'http' | 'browser' | 'screenshot' | 'cache'
 
 /**
- * Usage accounting for a single billable scrape operation, returned on the
- * response envelope of scrape and async-status (when terminal), and on
- * completion webhooks.
+ * Usage accounting for a single scrape, returned on `response_meta.usage` of
+ * scrape and async-status (when terminal) responses, and on completion
+ * webhooks.
+ *
+ * The response explains its own price:
+ * `total_credit_cost = engine_credit_cost × proxy_multiplier + screenshot_slicing_credit_cost`.
+ *
+ * The four `*_credit_cost` / `proxy_multiplier` fields are optional in this
+ * type because older api versions do not send them. When you read the total,
+ * fall back to the deprecated name: `usage.total_credit_cost ?? usage.credits`.
  */
 export interface Usage {
   /**
-   * Credits charged for this operation. This equals the engine base multiplied
-   * by the resolved proxy multiplier, plus {@link screenshot_slices}.
+   * Credits charged for this request. Always equals
+   * `engine_credit_cost × proxy_multiplier + screenshot_slicing_credit_cost`.
+   * `0` when nothing is billed: a cache hit, or a page whose status is not
+   * billed (see `page_status_code` on the scrape result).
+   *
+   * Optional only because older api versions do not send it; fall back to
+   * {@link credits} when it is missing.
    */
-  credits: number
+  total_credit_cost?: number
   /**
-   * Engine base billed for the delivered result: `http` (1), `browser` (3),
-   * `screenshot` (5), or `cache` (0).
+   * The engine base charged, before the proxy multiplier: `1` for `http`, `3`
+   * for `browser`, `5` for `screenshot`, `0` for `cache`. Also `0` when the
+   * page is not billed.
+   */
+  engine_credit_cost?: number
+  /**
+   * The multiplier of the proxy tier the request ran on: `1` for `basic`, `5`
+   * for `advanced`. Always reported, even when the engine cost is `0`.
+   */
+  proxy_multiplier?: number
+  /**
+   * The screenshot slicing add-on: `1` when the screenshot was split into
+   * slices on this request (a flat +1 credit outside the proxy multiplier,
+   * however many slices it made), otherwise `0`.
+   */
+  screenshot_slicing_credit_cost?: number
+  /**
+   * Engine the delivered result was billed at: `http`, `browser`,
+   * `screenshot`, or `cache` (served from cache).
    */
   engine: BillingEngine
   /**
@@ -48,8 +77,19 @@ export interface Usage {
    */
   proxy: ResolvedProxyTier
   /**
-   * Screenshot-slice add-on billed for this request: `1` when slices were
-   * produced during this request, otherwise `0`.
+   * Credits charged for this request. Same value as {@link total_credit_cost}.
+   *
+   * @deprecated Use {@link total_credit_cost}, which always has the same value.
+   * This field will be removed in a future version.
+   */
+  credits: number
+  /**
+   * Screenshot slicing add-on: `1` when slices were made on this request,
+   * otherwise `0`. Same value as {@link screenshot_slicing_credit_cost}.
+   *
+   * @deprecated Use {@link screenshot_slicing_credit_cost}, which always has
+   * the same value. Despite its name this is a 0/1 charge, not a count of
+   * slices. This field will be removed in a future version.
    */
   screenshot_slices: number
 }
@@ -160,6 +200,7 @@ export type ApiErrorName =
   | 'antibot_blocked'
   | 'too_many_redirects'
   | 'page_too_large'
+  | 'target_unreachable'
 
 /** Reason a usage allocation was denied (when `error_name = usage_allocation_error`). */
 export type UsageAllocationReason =

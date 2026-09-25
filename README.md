@@ -55,7 +55,8 @@ const page = await crawlbrulee.scrape({
 console.log(page.markdown)
 console.log(page.links?.length, 'links found')
 console.log(page.metadata?.title) // structured <head> metadata
-console.log(page.response_meta.usage.credits, 'credits charged') // usage accounting
+console.log(page.page_status_code) // the site's own http status, e.g. 200 or 404
+console.log(page.response_meta.usage.total_credit_cost, 'credits charged') // usage accounting
 ```
 
 ### authentication
@@ -135,14 +136,38 @@ the response carries the extracted content alongside structured `metadata` (the 
 
 ```ts
 page.metadata?.title // structured <head> metadata (when extract.metadata, on by default)
+page.page_status_code // the http status the site answered with for the final page, e.g. 200 or 404
 
-page.response_meta.usage.credits // credits charged
-page.response_meta.usage.engine // billed base: 'http' | 'browser' | 'screenshot' | 'cache'
-page.response_meta.usage.proxy // the resolved proxy tier actually used: 'basic' | 'advanced' (never 'auto')
-page.response_meta.usage.screenshot_slices // billed slice add-on: 0 or 1
+const usage = page.response_meta.usage
+usage.total_credit_cost // credits charged = engine_credit_cost × proxy_multiplier + screenshot_slicing_credit_cost
+usage.engine_credit_cost // engine base: 1 http, 3 browser, 5 screenshot, 0 cache
+usage.proxy_multiplier // 1 basic, 5 advanced
+usage.screenshot_slicing_credit_cost // slicing add-on: 0 or 1
+usage.engine // billed engine: 'http' | 'browser' | 'screenshot' | 'cache'
+usage.proxy // the resolved proxy tier actually used: 'basic' | 'advanced' (never 'auto')
 ```
 
+`usage.credits` and `usage.screenshot_slices` still come back with the same values as `total_credit_cost` and
+`screenshot_slicing_credit_cost`. they are **deprecated** and will be removed in a future version — read the new names.
+older api versions send only the old names, so the new fields are optional in the types. to read the total either way,
+use `usage.total_credit_cost ?? usage.credits`.
+
 notes:
+
+- **`page_status_code`**: a page the site really served is a successful result, whatever its status. a 404, 410, 401
+  or 503 page comes back with its content and `page_status_code` set to the site's status — `scrape()` does not throw
+  for it. check the field when the status matters to you:
+
+  ```ts
+  const page = await crawlbrulee.scrape({ url: 'https://example.com/old-page' })
+  if (page.page_status_code === 404) {
+    // the site says the page does not exist — its 404 page is in page.markdown / page.cleaned_html
+  }
+  ```
+
+  billing follows the site's status: 2xx and 4xx pages are billed, except 403, 407, 408, 429 and 451; 5xx pages are
+  never billed. an unbilled page reports `total_credit_cost: 0`. errors are thrown when we could not return the page
+  — see [errors](#errors).
 
 - **`proxy`**: defaults to `auto` when omitted — it starts at the basic tier and escalates to advanced on failure,
   billed at the delivered tier. pass `'basic'` or `'advanced'` to pin a tier. on the response,
@@ -184,11 +209,13 @@ pass a `webhook` to be notified on completion instead of polling — see [webhoo
 
 look up the current state of an async job — `pending`, `running`, `done`, or `failed`. the response carries `job_id` and
 `created_at` (snake_case, straight off the wire). once the job is `done`, it also carries usage accounting on
-`response_meta.usage` (`credits`, `engine`, `proxy`, `screenshot_slices`).
+`response_meta.usage` (`total_credit_cost`, `engine_credit_cost`, `proxy_multiplier`, `screenshot_slicing_credit_cost`,
+`engine`, `proxy`, and the deprecated `credits` and `screenshot_slices`).
 
 #### `crawlbrulee.getScrapeResult(jobId, options?)`
 
-fetch the result of a completed async job. throws if the job hasn't finished yet.
+fetch the result of a completed async job. throws if the job hasn't finished yet. like `scrape()`, a job whose page came
+back as a 404 (or any other status) is a completed job — the result carries `page_status_code`.
 
 #### `crawlbrulee.waitForScrape(jobId, options?)`
 
@@ -225,7 +252,7 @@ const result = await crawlbrulee.map({
 })
 
 console.log(result.links.length, 'urls on page 1 of', result.response_meta.pagination.total_pages)
-console.log(result.response_meta.usage.credits, 'credits charged') // usage accounting, alongside pagination + truncation
+console.log(result.response_meta.usage.total_credit_cost, 'credits charged') // usage accounting, alongside pagination + truncation
 ```
 
 - **`max_urls`** defaults to `5_000` and maxes out at `100_000`. discovery _stops_ at this number, so a smaller value
@@ -233,8 +260,14 @@ console.log(result.response_meta.usage.credits, 'credits charged') // usage acco
 - **`limit`** (urls per page) defaults to `5_000` and maxes out at `10_000`.
 - the sdk sends only the fields you pass — omit `max_urls` or `limit` and the server applies its own default.
 
-`result.response_meta` carries `usage` (`credits` / billed `engine` / resolved `proxy`) alongside the map-specific `pagination`
-and `truncation` blocks. map operations do not produce screenshot slices.
+`result.response_meta` carries `usage` alongside the map-specific `pagination` and `truncation` blocks. map usage has the
+same fields as scrape usage minus slicing, since a map makes no screenshots: `total_credit_cost` (=
+`engine_credit_cost × proxy_multiplier`), `engine_credit_cost` (1 `http`, 0 `cache`), `proxy_multiplier`, the billed
+`engine`, the resolved `proxy`, and the deprecated `credits` (same value as `total_credit_cost`). an empty map is free
+when the site answered only with statuses we don't bill (a `5xx`, for example) or not at all.
+
+a map has no `page_status_code`: it reads several pages (sitemaps and the home page), so one status would not describe
+it.
 
 #### did the map miss pages?
 
@@ -323,8 +356,8 @@ const { job_id } = await crawlbrulee.scrapeAsync({
 
 configure the signing secret used for these deliveries in the dashboard (**account → webhooks**). there is no per-request
 secret - when the delivery arrives, verify it with [`verifyWebhookSignature`](#verifywebhooksignatureoptions) and read your `metadata` back from
-`webhook.data.metadata`. the delivery also carries usage accounting on `webhook.data.response_meta.usage` (`credits`,
-`engine`, `proxy`, `screenshot_slices`). see [`AsyncScrapeWebhook`](src/types/scrape.ts) for the full field documentation.
+`webhook.data.metadata`. a `success` delivery also carries the site's status on `webhook.data.page_status_code` and usage
+accounting on `webhook.data.response_meta.usage` (the same fields as on a scrape result). see [`AsyncScrapeWebhook`](src/types/scrape.ts) for the full field documentation.
 
 ### `verifyWebhookSignature(options)`
 
@@ -397,10 +430,11 @@ cases:
 | `AntibotBlockedError`     | 403 `antibot_blocked` — the target site's bot protection blocked us. not a key problem.                    |
 | `TooManyRedirectsError`   | 422 `too_many_redirects` — the target site redirected in a loop. not a bad request; retrying rarely helps. |
 | `PageTooLargeError`       | 422 `page_too_large` — the page's html was too large to process. terminal; do not retry it.                |
+| `TargetUnreachableError`  | 502 `target_unreachable` — we could not reach the target site at all. not billed; retrying later may help. |
 | `RateLimitError`          | 429 responses. exposes `retryAfterMs` and `limitedBy` when the server provided them.                       |
 | `UsageAllocationError`    | the org's plan limit was hit. exposes `reason` (`credit_limit`, `concurrency_limit`, …) and `usage`.       |
 | `ValidationError`         | 4xx caused by a bad request (`invalid_url`, `url_too_long`, `blocked_url`, …).                             |
-| `NotFoundError`           | 404 responses (e.g. unknown async `jobId`).                                                                |
+| `NotFoundError`           | 404 from our api (e.g. unknown async `jobId`). never the target page — see below.                          |
 | `ServiceUnavailableError` | 503 responses (`service_unavailable`). the api is temporarily unavailable — transient, retry it.           |
 | `TransportError`          | network failures, aborts, non-json responses, request body read failures.                                  |
 | `CrawlbruleeError`        | base class — used for any other api error. always has `status`, `errorName`, `message`.                    |
@@ -423,8 +457,9 @@ try {
 }
 ```
 
-`RateLimitError` (429) and `ServiceUnavailableError` (503) are the two transient ones — both are worth retrying with
-backoff, and a 429 carries a `retryAfterMs` hint when the server sent one. a 503 means our side couldn't serve the
+`RateLimitError` (429), `ServiceUnavailableError` (503) and `TargetUnreachableError` (502) are the transient ones — all
+are worth retrying with backoff, and a 429 carries a `retryAfterMs` hint when the server sent one. the sdk never retries
+on its own; you choose when to try again. a 503 means our side couldn't serve the
 request for a moment; it says nothing about your credentials, so it is **not** a reason to rotate your api key. a key
 that is genuinely missing, invalid, or expired comes back as a 401 and raises `AuthenticationError` instead.
 
@@ -436,6 +471,16 @@ unrecognized name still falls back to `AuthenticationError`.
 **a 422 `too_many_redirects` is the target's doing too.** the site redirected the request in a loop, or through more
 hops than the api follows — it raises `TooManyRedirectsError`, not `ValidationError`, because nothing about your
 request was wrong. retrying rarely helps. both `/scrape` and `/map` can return it.
+
+**a target page with an error status is not an error.** when the site answers with a 404, 410, 401, 503 or any other
+page, `scrape()` returns that page and puts the site's status in `page_status_code` — see the
+[scrape notes](#crawlbruleescraperequest-options). `NotFoundError` only means something on our side was not found, like
+an unknown async job id.
+
+**a 502 `target_unreachable` means we never got a page.** we could not reach the site at all — for example it did not
+answer in time, or its tls certificate was not valid. it raises `TargetUnreachableError` with the fixed message "Could
+not reach the target site." and no `details`. you are not charged. the site may come back, so retrying later can help.
+both `/scrape` and `/map` can return it.
 
 **a 422 `page_too_large` means the page, not the request.** the page's html was too large to process, so it raises
 `PageTooLargeError`, not `ValidationError`. it is terminal: the same url will fail the same way, so do not retry it —

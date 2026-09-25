@@ -148,14 +148,48 @@ export interface MapTruncation {
 /** Billing engine reported by map: fresh discovery or a cached result. */
 export type MapBillingEngine = 'http' | 'cache'
 
-/** Usage accounting returned by the map endpoint. Map operations do not produce screenshot slices. */
+/**
+ * Usage accounting returned by the map endpoint. Map requests make no
+ * screenshots, so there is no slicing add-on:
+ * `total_credit_cost = engine_credit_cost × proxy_multiplier`.
+ *
+ * The `*_credit_cost` / `proxy_multiplier` fields are optional in this type
+ * because older api versions do not send them. When you read the total, fall
+ * back to the deprecated name: `usage.total_credit_cost ?? usage.credits`.
+ */
 export interface MapUsage {
-  /** Credits charged for this operation. */
-  credits: number
+  /**
+   * Credits charged for this map request. Always equals
+   * `engine_credit_cost × proxy_multiplier`. `0` for a cache hit, and for an
+   * empty map when the site answered only with statuses we don't bill (a `5xx`,
+   * for example) or not at all.
+   *
+   * Optional only because older api versions do not send it; fall back to
+   * {@link credits} when it is missing.
+   */
+  total_credit_cost?: number
+  /**
+   * The engine base charged, before the proxy multiplier: `1` for `http`, `0`
+   * for `cache`. Also `0` for an empty map that is not billed.
+   */
+  engine_credit_cost?: number
+  /**
+   * The multiplier of the proxy tier the request ran on: `1` for `basic`, `5`
+   * for `advanced`. Always reported, even when the engine cost is `0`.
+   */
+  proxy_multiplier?: number
   /** `http` for fresh discovery or `cache` for a cached result. */
   engine: MapBillingEngine
   /** The proxy tier the server resolved and used (never `auto`). */
   proxy: ResolvedProxyTier
+  /**
+   * Credits charged for this map request. Same value as
+   * {@link total_credit_cost}.
+   *
+   * @deprecated Use {@link total_credit_cost}, which always has the same value.
+   * This field will be removed in a future version.
+   */
+  credits: number
 }
 
 /**

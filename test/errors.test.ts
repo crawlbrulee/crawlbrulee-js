@@ -8,6 +8,7 @@ import {
   PageTooLargeError,
   RateLimitError,
   ServiceUnavailableError,
+  TargetUnreachableError,
   TooManyRedirectsError,
   TransportError,
   UsageAllocationError,
@@ -187,6 +188,62 @@ describe('Error mapping', () => {
       const e = err as PageTooLargeError
       expect(e.status).toBe(422)
       expect(e.errorName).toBe('page_too_large')
+    }
+  })
+
+  it('maps 502 target_unreachable to TargetUnreachableError', async () => {
+    const q = createFetchQueue()
+    q.enqueue(
+      jsonResponse({ name: 'target_unreachable', message: 'Could not reach the target site.' }, 502)
+    )
+    const client = buildClient(q.fetch)
+
+    try {
+      await client.scrape({ url: 'https://example.com' })
+      throw new Error('expected throw')
+    } catch (err) {
+      expect(err).toBeInstanceOf(TargetUnreachableError)
+      expect(err).toBeInstanceOf(CrawlbruleeError)
+      // We never reached the site — not a key problem, not a bad request, not
+      // our own outage.
+      expect(err).not.toBeInstanceOf(AuthenticationError)
+      expect(err).not.toBeInstanceOf(ValidationError)
+      expect(err).not.toBeInstanceOf(ServiceUnavailableError)
+      const e = err as TargetUnreachableError
+      expect(e.name).toBe('TargetUnreachableError')
+      expect(e.status).toBe(502)
+      expect(e.errorName).toBe('target_unreachable')
+      expect(e.message).toBe('Could not reach the target site.')
+      expect(e.details).toBeUndefined()
+    }
+  })
+
+  it('maps target_unreachable from /map to TargetUnreachableError', async () => {
+    const q = createFetchQueue()
+    q.enqueue(
+      jsonResponse({ name: 'target_unreachable', message: 'Could not reach the target site.' }, 502)
+    )
+    const client = buildClient(q.fetch)
+
+    await expect(client.map({ url: 'https://example.com' })).rejects.toBeInstanceOf(
+      TargetUnreachableError
+    )
+  })
+
+  it('does not guess TargetUnreachableError from a bare 502 with another name', async () => {
+    // Only the name proves we could not reach the site. A 502 with any other
+    // name stays the base class, like other unrecognized errors.
+    const q = createFetchQueue()
+    q.enqueue(jsonResponse({ name: 'internal_server_error', message: 'bad gateway' }, 502))
+    const client = buildClient(q.fetch)
+
+    try {
+      await client.scrape({ url: 'https://example.com' })
+      throw new Error('expected throw')
+    } catch (err) {
+      expect(err).toBeInstanceOf(CrawlbruleeError)
+      expect(err).not.toBeInstanceOf(TargetUnreachableError)
+      expect((err as CrawlbruleeError).status).toBe(502)
     }
   })
 

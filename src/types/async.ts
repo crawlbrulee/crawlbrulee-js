@@ -21,8 +21,8 @@ export interface AsyncJobStatusResponse {
   error?: string
   /**
    * Response envelope metadata — present only when the job has reached the
-   * terminal `done` state. Carries `usage` (credits charged, billing engine,
-   * resolved proxy tier, and billed screenshot slices).
+   * terminal `done` state. Carries `usage`: the credits charged and how they
+   * add up. See `Usage`.
    */
   response_meta?: ResponseMeta
 }

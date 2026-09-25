@@ -301,7 +301,14 @@ export type ScrapeWarningCode =
   | 'inline_images_unavailable'
   | 'metadata_unavailable'
 
-/** Successful response from `POST /api/scrape` and `GET /api/scrape/result/:jobId`. */
+/**
+ * Successful response from `POST /api/scrape` and `GET /api/scrape/result/:jobId`.
+ *
+ * A successful response means we reached the site and got its final page —
+ * whatever status the site answered with. A 404, 410, 401 or 503 page comes
+ * back here with its content, and the site's own status is in
+ * {@link ScrapeResponse.page_status_code}. It is not thrown as an error.
+ */
 export interface ScrapeResponse {
   /**
    * The URL that was actually scraped, after any redirects, in cleaned
@@ -311,6 +318,22 @@ export interface ScrapeResponse {
   url: string
   /** The URL you requested, echoed verbatim — before any redirects. */
   requested_url: string
+  /**
+   * The HTTP status the target site answered with for the final page, after
+   * redirects. When the page is rendered in a browser, it is the status of the
+   * main document, not of images or scripts.
+   *
+   * A page the site really served is a successful result, whatever its
+   * status: a 404 page comes back here as `404` with its content — it is not
+   * thrown as an error. Check this field when the page's status matters to
+   * you, for example `if (page.page_status_code === 404)`.
+   *
+   * Billing follows this status: 2xx and 4xx pages are billed, except 403,
+   * 407, 408, 429 and 451; 5xx pages are never billed.
+   *
+   * Optional only because older api versions do not send it.
+   */
+  page_status_code?: number
   /** `Content-Type` header returned by the origin. */
   content_type?: string
   /**
@@ -357,8 +380,10 @@ export interface ScrapeResponse {
    */
   warnings?: (ScrapeWarningCode | (string & {}))[]
   /**
-   * Response envelope metadata. Carries `usage` (credits charged, billing
-   * engine, resolved proxy tier, and billed screenshot slices).
+   * Response metadata. Carries `usage`: the credits charged
+   * (`total_credit_cost`) and how they add up (`engine_credit_cost`,
+   * `proxy_multiplier`, `screenshot_slicing_credit_cost`), plus the billed
+   * `engine` and the resolved `proxy` tier. See `Usage`.
    */
   response_meta: ResponseMeta
 }

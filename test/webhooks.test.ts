@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, expectTypeOf, it, vi } from 'vitest'
 
 import {
   CrawlbruleeError,
@@ -272,5 +272,61 @@ describe('Crawlbrulee.fetchScrapeResultFromWebhook', () => {
     await expect(client.fetchScrapeResultFromWebhook(bogus)).rejects.toBeInstanceOf(
       CrawlbruleeError
     )
+  })
+})
+
+describe('ScrapeCompleteWebhook — page status and usage', () => {
+  it('carries page_status_code and the new usage fields on a success delivery', () => {
+    const body = JSON.parse(
+      JSON.stringify({
+        event_id: 'evt_2',
+        timestamp: '2026-09-25T12:00:00.000Z',
+        event: 'scrape.complete',
+        data: {
+          job_id: 'job-404',
+          status: 'success',
+          url: 'https://example.com/gone',
+          page_status_code: 410,
+          completed_at: '2026-09-25T12:00:00.000Z',
+          response_meta: {
+            usage: {
+              total_credit_cost: 1,
+              engine_credit_cost: 1,
+              proxy_multiplier: 1,
+              screenshot_slicing_credit_cost: 0,
+              engine: 'http',
+              proxy: 'basic',
+              credits: 1,
+              screenshot_slices: 0,
+            },
+          },
+        },
+      })
+    ) as ScrapeCompleteWebhook
+
+    expect(body.data.page_status_code).toBe(410)
+    expect(body.data.response_meta?.usage.total_credit_cost).toBe(1)
+  })
+
+  it('still reads a delivery from an api without page_status_code', () => {
+    const oldBody: ScrapeCompleteWebhook = {
+      event_id: 'evt_3',
+      timestamp: '2026-06-13T12:00:00.000Z',
+      event: 'scrape.complete',
+      data: {
+        job_id: 'job-1',
+        status: 'success',
+        url: 'https://example.com/',
+        completed_at: '2026-06-13T12:00:00.000Z',
+        response_meta: {
+          usage: { credits: 1, engine: 'http', proxy: 'basic', screenshot_slices: 0 },
+        },
+      },
+    }
+
+    expect(oldBody.data.page_status_code).toBeUndefined()
+    expectTypeOf<ScrapeCompleteWebhook['data']['page_status_code']>().toEqualTypeOf<
+      number | undefined
+    >()
   })
 })
