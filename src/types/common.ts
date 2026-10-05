@@ -35,8 +35,7 @@ export type BillingEngine = 'http' | 'browser' | 'screenshot' | 'cache'
  * `total_credit_cost = engine_credit_cost × proxy_multiplier + screenshot_slicing_credit_cost + zero_data_retention_credit_cost`.
  *
  * The `*_credit_cost` / `proxy_multiplier` fields are optional in this type
- * because older api versions do not send them. When you read the total,
- * fall back to the deprecated name: `usage.total_credit_cost ?? usage.credits`.
+ * because older api versions do not send them.
  */
 export interface Usage {
   /**
@@ -45,8 +44,7 @@ export interface Usage {
    * `0` when nothing is billed: a cache hit, or a page whose status is not
    * billed (see `page_status_code` on the scrape result).
    *
-   * Optional only because older api versions do not send it; fall back to
-   * {@link credits} when it is missing.
+   * Optional only because older api versions do not send it.
    */
   total_credit_cost?: number
   /**
@@ -82,22 +80,6 @@ export interface Usage {
    * multiplies the engine base by 5.
    */
   proxy: ResolvedProxyTier
-  /**
-   * Credits charged for this request. Same value as {@link total_credit_cost}.
-   *
-   * @deprecated Use {@link total_credit_cost}, which always has the same value.
-   * This field will be removed in a future version.
-   */
-  credits: number
-  /**
-   * Screenshot slicing add-on: `1` when slices were made on this request,
-   * otherwise `0`. Same value as {@link screenshot_slicing_credit_cost}.
-   *
-   * @deprecated Use {@link screenshot_slicing_credit_cost}, which always has
-   * the same value. Despite its name this is a 0/1 charge, not a count of
-   * slices. This field will be removed in a future version.
-   */
-  screenshot_slices: number
 }
 
 /**

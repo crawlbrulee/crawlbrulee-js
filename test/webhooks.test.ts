@@ -225,11 +225,9 @@ describe('Crawlbrulee.fetchScrapeResultFromWebhook', () => {
         completed_at: '2026-06-13T12:00:00.000Z',
         response_meta: {
           usage: {
-            credits: 1,
             zero_data_retention_credit_cost: 0,
             engine: 'http',
             proxy: 'basic',
-            screenshot_slices: 0,
           },
         },
         ...overrides,
@@ -303,8 +301,6 @@ describe('ScrapeCompleteWebhook — page status and usage', () => {
               zero_data_retention_credit_cost: 0,
               engine: 'http',
               proxy: 'basic',
-              credits: 1,
-              screenshot_slices: 0,
             },
           },
         },
@@ -327,11 +323,9 @@ describe('ScrapeCompleteWebhook — page status and usage', () => {
         completed_at: '2026-06-13T12:00:00.000Z',
         response_meta: {
           usage: {
-            credits: 1,
             zero_data_retention_credit_cost: 0,
             engine: 'http',
             proxy: 'basic',
-            screenshot_slices: 0,
           },
         },
       },

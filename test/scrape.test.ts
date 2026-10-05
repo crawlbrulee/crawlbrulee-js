@@ -13,7 +13,7 @@ describe('Crawlbrulee.scrape', () => {
         markdown: '# Hello',
         metadata: { title: 'Example' },
         response_meta: {
-          usage: { credits: 15, engine: 'browser', proxy: 'advanced', screenshot_slices: 0 },
+          usage: { total_credit_cost: 15, engine: 'browser', proxy: 'advanced' },
         },
       })
     )
@@ -38,10 +38,9 @@ describe('Crawlbrulee.scrape', () => {
     expect(res.metadata?.title).toBe('Example')
     expect(res.requested_url).toBe('https://example.com')
     expect(res.response_meta.usage).toEqual({
-      credits: 15,
+      total_credit_cost: 15,
       engine: 'browser',
       proxy: 'advanced',
-      screenshot_slices: 0,
     })
   })
 
@@ -107,8 +106,6 @@ describe('Crawlbrulee.scrape — page status and usage', () => {
             zero_data_retention_credit_cost: 0,
             engine: 'http',
             proxy: 'basic',
-            credits: 1,
-            screenshot_slices: 0,
           },
         },
         warnings: [],
@@ -138,8 +135,6 @@ describe('Crawlbrulee.scrape — page status and usage', () => {
             zero_data_retention_credit_cost: 0,
             engine: 'screenshot',
             proxy: 'advanced',
-            credits: 26,
-            screenshot_slices: 1,
           },
         },
       })
@@ -157,12 +152,9 @@ describe('Crawlbrulee.scrape — page status and usage', () => {
     expect(usage.total_credit_cost).toBe(
       usage.engine_credit_cost! * usage.proxy_multiplier! + usage.screenshot_slicing_credit_cost!
     )
-    // The deprecated names still carry the same values.
-    expect(usage.credits).toBe(usage.total_credit_cost)
-    expect(usage.screenshot_slices).toBe(usage.screenshot_slicing_credit_cost)
   })
 
-  it('still reads a response from an api without page_status_code or the new usage fields', async () => {
+  it('still reads a response from an api without page_status_code or the usage breakdown', async () => {
     // The shape the api returned before page_status_code and the usage
     // breakdown existed. It must keep type-checking and parsing.
     const oldResponse: ScrapeResponse = {
@@ -171,11 +163,8 @@ describe('Crawlbrulee.scrape — page status and usage', () => {
       markdown: '# Hello',
       response_meta: {
         usage: {
-          credits: 3,
-          zero_data_retention_credit_cost: 0,
           engine: 'browser',
           proxy: 'basic',
-          screenshot_slices: 0,
         },
       },
     }
@@ -187,8 +176,6 @@ describe('Crawlbrulee.scrape — page status and usage', () => {
 
     expect(page.page_status_code).toBeUndefined()
     expect(page.response_meta.usage.total_credit_cost).toBeUndefined()
-    // Reading code falls back to the old name when the new one is missing.
-    expect(page.response_meta.usage.total_credit_cost ?? page.response_meta.usage.credits).toBe(3)
   })
 
   it('types page_status_code as an optional number and the new usage fields as optional numbers', () => {
@@ -197,9 +184,9 @@ describe('Crawlbrulee.scrape — page status and usage', () => {
     expectTypeOf<Usage['engine_credit_cost']>().toEqualTypeOf<number | undefined>()
     expectTypeOf<Usage['proxy_multiplier']>().toEqualTypeOf<number | undefined>()
     expectTypeOf<Usage['screenshot_slicing_credit_cost']>().toEqualTypeOf<number | undefined>()
-    // The deprecated names stay required: every api version sends them.
-    expectTypeOf<Usage['credits']>().toEqualTypeOf<number>()
-    expectTypeOf<Usage['screenshot_slices']>().toEqualTypeOf<number>()
+    // The removed deprecated names are gone from the type.
+    expectTypeOf<Usage>().not.toHaveProperty('credits')
+    expectTypeOf<Usage>().not.toHaveProperty('screenshot_slices')
   })
 })
 
@@ -249,8 +236,6 @@ describe('Crawlbrulee.scrape — zero data retention', () => {
             zero_data_retention_credit_cost: 1,
             engine: 'http',
             proxy: 'advanced',
-            credits: 6,
-            screenshot_slices: 0,
           },
         },
       })

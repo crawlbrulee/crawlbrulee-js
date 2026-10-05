@@ -16,7 +16,7 @@ function mapResponse(
     links: overrides.links ?? [{ url: 'https://example.com/' }],
     response_meta: {
       usage: overrides.usage ?? {
-        credits: 1,
+        total_credit_cost: 1,
         zero_data_retention_credit_cost: 0,
         engine: 'http',
         proxy: 'basic',
@@ -48,7 +48,12 @@ describe('Crawlbrulee.map', () => {
       jsonResponse({
         links: [{ url: 'https://example.com/' }, { url: 'https://example.com/about' }],
         response_meta: {
-          usage: { credits: 1, zero_data_retention_credit_cost: 0, engine: 'http', proxy: 'basic' },
+          usage: {
+            total_credit_cost: 1,
+            zero_data_retention_credit_cost: 0,
+            engine: 'http',
+            proxy: 'basic',
+          },
           pagination: { page: 1, limit: 100, total: 2, total_pages: 1, has_more: false },
           truncation: {
             storage_capped: false,
@@ -83,7 +88,7 @@ describe('Crawlbrulee.map', () => {
     expect(res.links).toHaveLength(2)
     expect(res.response_meta.pagination.has_more).toBe(false)
     expect(res.response_meta.usage).toEqual({
-      credits: 1,
+      total_credit_cost: 1,
       zero_data_retention_credit_cost: 0,
       engine: 'http',
       proxy: 'basic',
@@ -214,7 +219,7 @@ describe('Crawlbrulee.map', () => {
 })
 
 describe('Crawlbrulee.map — usage fields', () => {
-  it('reads the new usage fields next to the deprecated credits', async () => {
+  it('reads the usage fields', async () => {
     const q = createFetchQueue()
     q.enqueue(
       jsonResponse(
@@ -226,7 +231,6 @@ describe('Crawlbrulee.map — usage fields', () => {
             zero_data_retention_credit_cost: 0,
             engine: 'http',
             proxy: 'advanced',
-            credits: 5,
           },
         })
       )
@@ -239,32 +243,14 @@ describe('Crawlbrulee.map — usage fields', () => {
     expect(usage.total_credit_cost).toBe(5)
     expect(usage.engine_credit_cost).toBe(1)
     expect(usage.proxy_multiplier).toBe(5)
-    expect(usage.credits).toBe(usage.total_credit_cost)
     expect(usage).not.toHaveProperty('screenshot_slicing_credit_cost')
   })
 
-  it('still reads map usage from an api without the new fields', async () => {
-    const q = createFetchQueue()
-    q.enqueue(
-      jsonResponse(
-        mapResponse({
-          usage: { credits: 1, zero_data_retention_credit_cost: 0, engine: 'http', proxy: 'basic' },
-        })
-      )
-    )
-    const client = buildClient(q.fetch)
-
-    const { response_meta } = await client.map({ url: 'https://example.com' })
-
-    expect(response_meta.usage.total_credit_cost).toBeUndefined()
-    expect(response_meta.usage.total_credit_cost ?? response_meta.usage.credits).toBe(1)
-  })
-
-  it('types the new map usage fields as optional numbers and keeps credits required', () => {
+  it('types the map usage fields as optional numbers, without the removed credits', () => {
     expectTypeOf<MapUsage['total_credit_cost']>().toEqualTypeOf<number | undefined>()
     expectTypeOf<MapUsage['engine_credit_cost']>().toEqualTypeOf<number | undefined>()
     expectTypeOf<MapUsage['proxy_multiplier']>().toEqualTypeOf<number | undefined>()
-    expectTypeOf<MapUsage['credits']>().toEqualTypeOf<number>()
+    expectTypeOf<MapUsage>().not.toHaveProperty('credits')
     expectTypeOf<MapUsage['zero_data_retention_credit_cost']>().toEqualTypeOf<number | undefined>()
     expectTypeOf<MapUsage>().not.toHaveProperty('screenshot_slicing_credit_cost')
   })
@@ -296,7 +282,6 @@ describe('Crawlbrulee.map — zero data retention', () => {
             zero_data_retention_credit_cost: 1,
             engine: 'http',
             proxy: 'advanced',
-            credits: 6,
           },
         })
       )

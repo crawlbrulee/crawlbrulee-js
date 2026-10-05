@@ -161,8 +161,7 @@ export type MapBillingEngine = 'http' | 'cache'
  * `total_credit_cost = engine_credit_cost × proxy_multiplier + zero_data_retention_credit_cost`.
  *
  * The `*_credit_cost` / `proxy_multiplier` fields are optional in this type
- * because older api versions do not send them. When you read the total, fall
- * back to the deprecated name: `usage.total_credit_cost ?? usage.credits`.
+ * because older api versions do not send them.
  */
 export interface MapUsage {
   /**
@@ -171,8 +170,7 @@ export interface MapUsage {
    * empty map when the site answered only with statuses we don't bill (a `5xx`,
    * for example) or not at all.
    *
-   * Optional only because older api versions do not send it; fall back to
-   * {@link credits} when it is missing.
+   * Optional only because older api versions do not send it.
    */
   total_credit_cost?: number
   /**
@@ -195,14 +193,6 @@ export interface MapUsage {
   engine: MapBillingEngine
   /** The proxy tier the server resolved and used (never `auto`). */
   proxy: ResolvedProxyTier
-  /**
-   * Credits charged for this map request. Same value as
-   * {@link total_credit_cost}.
-   *
-   * @deprecated Use {@link total_credit_cost}, which always has the same value.
-   * This field will be removed in a future version.
-   */
-  credits: number
 }
 
 /**

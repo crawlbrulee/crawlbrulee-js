@@ -25,9 +25,7 @@
  *         "screenshot_slicing_credit_cost": 0,
  *         "zero_data_retention_credit_cost": 0,
  *         "engine": "http",
- *         "proxy": "basic",
- *         "credits": 1,
- *         "screenshot_slices": 0
+ *         "proxy": "basic"
  *       }
  *     }
  *   }

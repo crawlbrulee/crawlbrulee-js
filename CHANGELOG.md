@@ -11,6 +11,11 @@ this project follows [Semantic Versioning](https://semver.org). while on `0.x`, 
 - **zero data retention.** `zero_data_retention` on `scrape`, `scrapeAsync` and `map`, `zero_data_retention_credit_cost` on `Usage` and `MapUsage` (optional, like the other cost parts), and `ZeroDataRetentionNotEnabledError` for the `403` (not an `AuthenticationError`; `'zero_data_retention_not_enabled'` is added to `ApiErrorName`). it keeps the result out of the shared cache and must be enabled for your organization. see [zero data retention](https://crawlbrulee.com/docs/zero-data-retention).
 - the totals now include it: `total_credit_cost = ( engine_credit_cost × proxy_multiplier ) + screenshot_slicing_credit_cost + zero_data_retention_credit_cost` for a scrape, and without the slicing part for a map.
 
+### removed
+
+- **`credits` and `screenshot_slices`** are gone from `Usage`, and `credits` from `MapUsage`. they were deprecated in
+  1.1.0. read `total_credit_cost` and `screenshot_slicing_credit_cost`, which always had the same values.
+
 ## 1.1.0 (2026-09-30)
 
 ### added

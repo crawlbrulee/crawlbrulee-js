@@ -147,11 +147,6 @@ usage.engine // billed engine: 'http' | 'browser' | 'screenshot' | 'cache'
 usage.proxy // the resolved proxy tier actually used: 'basic' | 'advanced' (never 'auto')
 ```
 
-`usage.credits` and `usage.screenshot_slices` still come back with the same values as `total_credit_cost` and
-`screenshot_slicing_credit_cost`. they are **deprecated** and will be removed in a future version — read the new names.
-older api versions send only the old names, so the new fields are optional in the types. to read the total either way,
-use `usage.total_credit_cost ?? usage.credits`.
-
 notes:
 
 - **`page_status_code`**: a page the site really served is a successful result, whatever its status. a 404, 410, 401
@@ -221,7 +216,7 @@ pass a `webhook` to be notified on completion instead of polling — see [webhoo
 look up the current state of an async job — `pending`, `running`, `done`, or `failed`. the response carries `job_id` and
 `created_at` (snake_case, straight off the wire). once the job is `done`, it also carries usage accounting on
 `response_meta.usage` (`total_credit_cost`, `engine_credit_cost`, `proxy_multiplier`, `screenshot_slicing_credit_cost`,
-`engine`, `proxy`, and the deprecated `credits` and `screenshot_slices`).
+`engine` and `proxy`).
 
 #### `crawlbrulee.getScrapeResult(jobId, options?)`
 
@@ -275,7 +270,7 @@ console.log(result.response_meta.usage.total_credit_cost, 'credits charged') // 
 same fields as scrape usage minus slicing, since a map makes no screenshots: `total_credit_cost` (=
 `engine_credit_cost × proxy_multiplier + zero_data_retention_credit_cost`), `engine_credit_cost` (1 `http`, 0 `cache`),
 `proxy_multiplier`, `zero_data_retention_credit_cost` (0 or 1), the billed
-`engine`, the resolved `proxy`, and the deprecated `credits` (same value as `total_credit_cost`). an empty map is free
+`engine` and the resolved `proxy`. an empty map is free
 when the site answered only with statuses we don't bill (a `5xx`, for example) or not at all.
 
 a map has no `page_status_code`: it reads several pages (sitemaps and the home page), so one status would not describe
