@@ -195,6 +195,17 @@ see [`ScrapeRequest`](src/types/scrape.ts) and [`ScrapeResponse`](src/types/scra
 documentation — and the [scrape endpoint](https://crawlbrulee.com/docs/scrape) reference for the api-side contract those
 types mirror.
 
+#### zero data retention
+
+pass `zero_data_retention: true` on `scrape`, `scrapeAsync` or `map` to keep the result out of the shared cache. anything stored to deliver it is kept for 24 hours, then deleted. it adds 1 credit and must be enabled for your organization. see [zero data retention](https://crawlbrulee.com/docs/zero-data-retention).
+
+```ts
+const page = await crawlbrulee.scrape({ url: 'https://example.com', zero_data_retention: true })
+console.log(page.response_meta.usage.zero_data_retention_credit_cost) // 1
+```
+
+without it enabled, the call raises `ZeroDataRetentionNotEnabledError` (`403`, not billed).
+
 #### `crawlbrulee.scrapeAsync(request, options?)`
 
 submit a scrape job in the background. returns immediately with a `job_id`.
@@ -262,7 +273,8 @@ console.log(result.response_meta.usage.total_credit_cost, 'credits charged') // 
 
 `result.response_meta` carries `usage` alongside the map-specific `pagination` and `truncation` blocks. map usage has the
 same fields as scrape usage minus slicing, since a map makes no screenshots: `total_credit_cost` (=
-`engine_credit_cost × proxy_multiplier`), `engine_credit_cost` (1 `http`, 0 `cache`), `proxy_multiplier`, the billed
+`engine_credit_cost × proxy_multiplier + zero_data_retention_credit_cost`), `engine_credit_cost` (1 `http`, 0 `cache`),
+`proxy_multiplier`, `zero_data_retention_credit_cost` (0 or 1), the billed
 `engine`, the resolved `proxy`, and the deprecated `credits` (same value as `total_credit_cost`). an empty map is free
 when the site answered only with statuses we don't bill (a `5xx`, for example) or not at all.
 
@@ -424,20 +436,21 @@ always verify the signature **before** parsing or trusting the body. the `X-Cwbl
 every failure raised by the sdk extends [`CrawlbruleeError`](src/errors.ts). typed subclasses are exported for the most actionable
 cases:
 
-| class                     | when it's raised                                                                                           |
-| ------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| `AuthenticationError`     | 401 / 403 responses (missing, invalid, or unauthorized api key).                                           |
-| `AntibotBlockedError`     | 403 `antibot_blocked` — the target site's bot protection blocked us. not a key problem.                    |
-| `TooManyRedirectsError`   | 422 `too_many_redirects` — the target site redirected in a loop. not a bad request; retrying rarely helps. |
-| `PageTooLargeError`       | 422 `page_too_large` — the page's html was too large to process. terminal; do not retry it.                |
-| `TargetUnreachableError`  | 502 `target_unreachable` — we could not reach the target site at all. not billed; retrying later may help. |
-| `RateLimitError`          | 429 responses. exposes `retryAfterMs` and `limitedBy` when the server provided them.                       |
-| `UsageAllocationError`    | the org's plan limit was hit. exposes `reason` (`credit_limit`, `concurrency_limit`, …) and `usage`.       |
-| `ValidationError`         | 4xx caused by a bad request (`invalid_url`, `url_too_long`, `blocked_url`, …).                             |
-| `NotFoundError`           | 404 from our api (e.g. unknown async `jobId`). never the target page — see below.                          |
-| `ServiceUnavailableError` | 503 responses (`service_unavailable`). the api is temporarily unavailable — transient, retry it.           |
-| `TransportError`          | network failures, aborts, non-json responses, request body read failures.                                  |
-| `CrawlbruleeError`        | base class — used for any other api error. always has `status`, `errorName`, `message`.                    |
+| class                              | when it's raised                                                                                                |
+| ---------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `AuthenticationError`              | 401 / 403 responses (missing, invalid, or unauthorized api key).                                                |
+| `AntibotBlockedError`              | 403 `antibot_blocked` — the target site's bot protection blocked us. not a key problem.                         |
+| `TooManyRedirectsError`            | 422 `too_many_redirects` — the target site redirected in a loop. not a bad request; retrying rarely helps.      |
+| `PageTooLargeError`                | 422 `page_too_large` — the page's html was too large to process. terminal; do not retry it.                     |
+| `ZeroDataRetentionNotEnabledError` | 403 `zero_data_retention_not_enabled` — `zero_data_retention` is not enabled for your organization. not billed. |
+| `TargetUnreachableError`           | 502 `target_unreachable` — we could not reach the target site at all. not billed; retrying later may help.      |
+| `RateLimitError`                   | 429 responses. exposes `retryAfterMs` and `limitedBy` when the server provided them.                            |
+| `UsageAllocationError`             | the org's plan limit was hit. exposes `reason` (`credit_limit`, `concurrency_limit`, …) and `usage`.            |
+| `ValidationError`                  | 4xx caused by a bad request (`invalid_url`, `url_too_long`, `blocked_url`, …).                                  |
+| `NotFoundError`                    | 404 from our api (e.g. unknown async `jobId`). never the target page — see below.                               |
+| `ServiceUnavailableError`          | 503 responses (`service_unavailable`). the api is temporarily unavailable — transient, retry it.                |
+| `TransportError`                   | network failures, aborts, non-json responses, request body read failures.                                       |
+| `CrawlbruleeError`                 | base class — used for any other api error. always has `status`, `errorName`, `message`.                         |
 
 ```ts
 import { Crawlbrulee, RateLimitError, UsageAllocationError } from '@crawlbrulee/sdk'
@@ -465,8 +478,9 @@ that is genuinely missing, invalid, or expired comes back as a 401 and raises `A
 
 **not every 403 is a key problem.** a 403 carrying `antibot_blocked` means the _target site_ blocked the request, not
 that your key was rejected — it raises `AntibotBlockedError`. retrying the same request rarely helps; use a higher
-proxy tier (`proxy: 'advanced'`) or skip the site. both `/scrape` and `/map` can return it. only a 403 with an
-unrecognized name still falls back to `AuthenticationError`.
+proxy tier (`proxy: 'advanced'`) or skip the site. both `/scrape` and `/map` can return it. a 403 carrying
+`zero_data_retention_not_enabled` raises `ZeroDataRetentionNotEnabledError`. only a 403 with an unrecognized name still
+falls back to `AuthenticationError`.
 
 **a 422 `too_many_redirects` is the target's doing too.** the site redirected the request in a loop, or through more
 hops than the api follows — it raises `TooManyRedirectsError`, not `ValidationError`, because nothing about your

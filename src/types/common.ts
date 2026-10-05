@@ -32,16 +32,16 @@ export type BillingEngine = 'http' | 'browser' | 'screenshot' | 'cache'
  * webhooks.
  *
  * The response explains its own price:
- * `total_credit_cost = engine_credit_cost × proxy_multiplier + screenshot_slicing_credit_cost`.
+ * `total_credit_cost = engine_credit_cost × proxy_multiplier + screenshot_slicing_credit_cost + zero_data_retention_credit_cost`.
  *
- * The four `*_credit_cost` / `proxy_multiplier` fields are optional in this
- * type because older api versions do not send them. When you read the total,
+ * The `*_credit_cost` / `proxy_multiplier` fields are optional in this type
+ * because older api versions do not send them. When you read the total,
  * fall back to the deprecated name: `usage.total_credit_cost ?? usage.credits`.
  */
 export interface Usage {
   /**
    * Credits charged for this request. Always equals
-   * `engine_credit_cost × proxy_multiplier + screenshot_slicing_credit_cost`.
+   * `engine_credit_cost × proxy_multiplier + screenshot_slicing_credit_cost + zero_data_retention_credit_cost`.
    * `0` when nothing is billed: a cache hit, or a page whose status is not
    * billed (see `page_status_code` on the scrape result).
    *
@@ -66,6 +66,12 @@ export interface Usage {
    * however many slices it made), otherwise `0`.
    */
   screenshot_slicing_credit_cost?: number
+  /**
+   * Credits added by zero data retention: `1` on a billed, fresh result,
+   * otherwise `0`. Absent on an older api version; read it as
+   * `usage.zero_data_retention_credit_cost ?? 0`.
+   */
+  zero_data_retention_credit_cost?: number
   /**
    * Engine the delivered result was billed at: `http`, `browser`,
    * `screenshot`, or `cache` (served from cache).
@@ -201,6 +207,7 @@ export type ApiErrorName =
   | 'too_many_redirects'
   | 'page_too_large'
   | 'target_unreachable'
+  | 'zero_data_retention_not_enabled'
 
 /** Reason a usage allocation was denied (when `error_name = usage_allocation_error`). */
 export type UsageAllocationReason =

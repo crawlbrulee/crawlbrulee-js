@@ -32,6 +32,7 @@ export {
   TransportError,
   UsageAllocationError,
   ValidationError,
+  ZeroDataRetentionNotEnabledError,
   isCrawlbruleeError,
 } from './errors.js'
 

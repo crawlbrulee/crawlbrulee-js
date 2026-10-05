@@ -15,7 +15,12 @@ function mapResponse(
   return {
     links: overrides.links ?? [{ url: 'https://example.com/' }],
     response_meta: {
-      usage: overrides.usage ?? { credits: 1, engine: 'http', proxy: 'basic' },
+      usage: overrides.usage ?? {
+        credits: 1,
+        zero_data_retention_credit_cost: 0,
+        engine: 'http',
+        proxy: 'basic',
+      },
       pagination: overrides.pagination ?? {
         page: 1,
         limit: 5000,
@@ -43,7 +48,7 @@ describe('Crawlbrulee.map', () => {
       jsonResponse({
         links: [{ url: 'https://example.com/' }, { url: 'https://example.com/about' }],
         response_meta: {
-          usage: { credits: 1, engine: 'http', proxy: 'basic' },
+          usage: { credits: 1, zero_data_retention_credit_cost: 0, engine: 'http', proxy: 'basic' },
           pagination: { page: 1, limit: 100, total: 2, total_pages: 1, has_more: false },
           truncation: {
             storage_capped: false,
@@ -77,7 +82,12 @@ describe('Crawlbrulee.map', () => {
     })
     expect(res.links).toHaveLength(2)
     expect(res.response_meta.pagination.has_more).toBe(false)
-    expect(res.response_meta.usage).toEqual({ credits: 1, engine: 'http', proxy: 'basic' })
+    expect(res.response_meta.usage).toEqual({
+      credits: 1,
+      zero_data_retention_credit_cost: 0,
+      engine: 'http',
+      proxy: 'basic',
+    })
     expect(res.response_meta.usage).not.toHaveProperty('screenshot_slices')
     expect(res.response_meta.truncation.discovery_capped).toBe(false)
     expect(res.response_meta.truncation.sitemaps_skipped).toBe(0)
@@ -213,6 +223,7 @@ describe('Crawlbrulee.map — usage fields', () => {
             total_credit_cost: 5,
             engine_credit_cost: 1,
             proxy_multiplier: 5,
+            zero_data_retention_credit_cost: 0,
             engine: 'http',
             proxy: 'advanced',
             credits: 5,
@@ -234,7 +245,13 @@ describe('Crawlbrulee.map — usage fields', () => {
 
   it('still reads map usage from an api without the new fields', async () => {
     const q = createFetchQueue()
-    q.enqueue(jsonResponse(mapResponse({ usage: { credits: 1, engine: 'http', proxy: 'basic' } })))
+    q.enqueue(
+      jsonResponse(
+        mapResponse({
+          usage: { credits: 1, zero_data_retention_credit_cost: 0, engine: 'http', proxy: 'basic' },
+        })
+      )
+    )
     const client = buildClient(q.fetch)
 
     const { response_meta } = await client.map({ url: 'https://example.com' })
@@ -248,6 +265,49 @@ describe('Crawlbrulee.map — usage fields', () => {
     expectTypeOf<MapUsage['engine_credit_cost']>().toEqualTypeOf<number | undefined>()
     expectTypeOf<MapUsage['proxy_multiplier']>().toEqualTypeOf<number | undefined>()
     expectTypeOf<MapUsage['credits']>().toEqualTypeOf<number>()
+    expectTypeOf<MapUsage['zero_data_retention_credit_cost']>().toEqualTypeOf<number | undefined>()
     expectTypeOf<MapUsage>().not.toHaveProperty('screenshot_slicing_credit_cost')
+  })
+})
+
+describe('Crawlbrulee.map — zero data retention', () => {
+  it('sends zero_data_retention at the top level of the body', async () => {
+    const q = createFetchQueue()
+    q.enqueue(jsonResponse(mapResponse()))
+    const client = buildClient(q.fetch)
+
+    await client.map({ url: 'https://example.com', zero_data_retention: true })
+
+    expect(JSON.parse(lastCallOf(q.mock).init.body as string)).toEqual({
+      url: 'https://example.com',
+      zero_data_retention: true,
+    })
+  })
+
+  it('reads zero_data_retention_credit_cost and it adds into the total', async () => {
+    const q = createFetchQueue()
+    q.enqueue(
+      jsonResponse(
+        mapResponse({
+          usage: {
+            total_credit_cost: 6,
+            engine_credit_cost: 1,
+            proxy_multiplier: 5,
+            zero_data_retention_credit_cost: 1,
+            engine: 'http',
+            proxy: 'advanced',
+            credits: 6,
+          },
+        })
+      )
+    )
+    const client = buildClient(q.fetch)
+
+    const { usage } = (await client.map({ url: 'https://example.com' })).response_meta
+
+    expect(usage.zero_data_retention_credit_cost).toBe(1)
+    expect(usage.total_credit_cost).toBe(
+      usage.engine_credit_cost! * usage.proxy_multiplier! + usage.zero_data_retention_credit_cost!
+    )
   })
 })

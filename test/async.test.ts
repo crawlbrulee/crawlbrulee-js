@@ -19,6 +19,19 @@ describe('Crawlbrulee — async scrape lifecycle', () => {
     expect(res.job_id).toBe('job-123')
   })
 
+  it('scrapeAsync sends zero_data_retention in the POST body', async () => {
+    const q = createFetchQueue()
+    q.enqueue(jsonResponse({ job_id: 'job-zdr' }, 202))
+    const client = buildClient(q.fetch)
+
+    await client.scrapeAsync({ url: 'https://example.com', zero_data_retention: true })
+
+    expect(JSON.parse(lastCallOf(q.mock).init.body as string)).toEqual({
+      url: 'https://example.com',
+      zero_data_retention: true,
+    })
+  })
+
   it('scrapeAsync sends webhook.url and webhook.metadata in the POST body', async () => {
     const q = createFetchQueue()
     q.enqueue(jsonResponse({ job_id: 'job-wh' }, 202))

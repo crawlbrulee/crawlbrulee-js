@@ -104,6 +104,7 @@ describe('Crawlbrulee.scrape — page status and usage', () => {
             engine_credit_cost: 1,
             proxy_multiplier: 1,
             screenshot_slicing_credit_cost: 0,
+            zero_data_retention_credit_cost: 0,
             engine: 'http',
             proxy: 'basic',
             credits: 1,
@@ -134,6 +135,7 @@ describe('Crawlbrulee.scrape — page status and usage', () => {
             engine_credit_cost: 5,
             proxy_multiplier: 5,
             screenshot_slicing_credit_cost: 1,
+            zero_data_retention_credit_cost: 0,
             engine: 'screenshot',
             proxy: 'advanced',
             credits: 26,
@@ -168,7 +170,13 @@ describe('Crawlbrulee.scrape — page status and usage', () => {
       requested_url: 'https://example.com',
       markdown: '# Hello',
       response_meta: {
-        usage: { credits: 3, engine: 'browser', proxy: 'basic', screenshot_slices: 0 },
+        usage: {
+          credits: 3,
+          zero_data_retention_credit_cost: 0,
+          engine: 'browser',
+          proxy: 'basic',
+          screenshot_slices: 0,
+        },
       },
     }
     const q = createFetchQueue()
@@ -192,5 +200,74 @@ describe('Crawlbrulee.scrape — page status and usage', () => {
     // The deprecated names stay required: every api version sends them.
     expectTypeOf<Usage['credits']>().toEqualTypeOf<number>()
     expectTypeOf<Usage['screenshot_slices']>().toEqualTypeOf<number>()
+  })
+})
+
+describe('Crawlbrulee.scrape — zero data retention', () => {
+  it('sends zero_data_retention at the top level of the body', async () => {
+    const q = createFetchQueue()
+    q.enqueue(jsonResponse({ url: 'https://example.com/', requested_url: 'https://example.com' }))
+    const client = buildClient(q.fetch)
+
+    await client.scrape({
+      url: 'https://example.com',
+      zero_data_retention: true,
+      cache: { max_age: 0 },
+    })
+
+    expect(JSON.parse(lastCallOf(q.mock).init.body as string)).toEqual({
+      url: 'https://example.com',
+      zero_data_retention: true,
+      cache: { max_age: 0 },
+    })
+  })
+
+  it('does not send the field when it is not set', async () => {
+    const q = createFetchQueue()
+    q.enqueue(jsonResponse({ url: 'https://example.com/', requested_url: 'https://example.com' }))
+    const client = buildClient(q.fetch)
+
+    await client.scrape({ url: 'https://example.com' })
+
+    expect(JSON.parse(lastCallOf(q.mock).init.body as string)).not.toHaveProperty(
+      'zero_data_retention'
+    )
+  })
+
+  it('reads zero_data_retention_credit_cost and it adds into the total', async () => {
+    const q = createFetchQueue()
+    q.enqueue(
+      jsonResponse({
+        url: 'https://example.com/',
+        requested_url: 'https://example.com',
+        response_meta: {
+          usage: {
+            total_credit_cost: 6,
+            engine_credit_cost: 1,
+            proxy_multiplier: 5,
+            screenshot_slicing_credit_cost: 0,
+            zero_data_retention_credit_cost: 1,
+            engine: 'http',
+            proxy: 'advanced',
+            credits: 6,
+            screenshot_slices: 0,
+          },
+        },
+      })
+    )
+    const client = buildClient(q.fetch)
+
+    const { usage } = (await client.scrape({ url: 'https://example.com' })).response_meta
+
+    expect(usage.zero_data_retention_credit_cost).toBe(1)
+    expect(usage.total_credit_cost).toBe(
+      usage.engine_credit_cost! * usage.proxy_multiplier! +
+        usage.screenshot_slicing_credit_cost! +
+        usage.zero_data_retention_credit_cost!
+    )
+  })
+
+  it('types zero_data_retention_credit_cost as an optional number, like the other cost parts', () => {
+    expectTypeOf<Usage['zero_data_retention_credit_cost']>().toEqualTypeOf<number | undefined>()
   })
 })

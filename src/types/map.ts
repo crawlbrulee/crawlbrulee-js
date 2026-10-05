@@ -65,6 +65,13 @@ export interface MapRequest {
   limit?: number
   /** Optional country emulation. */
   location?: MapLocation
+  /**
+   * Keeps the result out of the shared cache; anything stored to deliver it is
+   * kept for 24 hours, then deleted. Adds 1 credit. Must be enabled for your
+   * organization, or the request fails with {@link ZeroDataRetentionNotEnabledError}.
+   * See https://crawlbrulee.com/docs/zero-data-retention.
+   */
+  zero_data_retention?: boolean
 }
 
 /** Single discovered URL in a map result. */
@@ -151,7 +158,7 @@ export type MapBillingEngine = 'http' | 'cache'
 /**
  * Usage accounting returned by the map endpoint. Map requests make no
  * screenshots, so there is no slicing add-on:
- * `total_credit_cost = engine_credit_cost × proxy_multiplier`.
+ * `total_credit_cost = engine_credit_cost × proxy_multiplier + zero_data_retention_credit_cost`.
  *
  * The `*_credit_cost` / `proxy_multiplier` fields are optional in this type
  * because older api versions do not send them. When you read the total, fall
@@ -160,7 +167,7 @@ export type MapBillingEngine = 'http' | 'cache'
 export interface MapUsage {
   /**
    * Credits charged for this map request. Always equals
-   * `engine_credit_cost × proxy_multiplier`. `0` for a cache hit, and for an
+   * `engine_credit_cost × proxy_multiplier + zero_data_retention_credit_cost`. `0` for a cache hit, and for an
    * empty map when the site answered only with statuses we don't bill (a `5xx`,
    * for example) or not at all.
    *
@@ -178,6 +185,12 @@ export interface MapUsage {
    * for `advanced`. Always reported, even when the engine cost is `0`.
    */
   proxy_multiplier?: number
+  /**
+   * Credits added by zero data retention: `1` on a billed, fresh result,
+   * otherwise `0`. Absent on an older api version; read it as
+   * `usage.zero_data_retention_credit_cost ?? 0`.
+   */
+  zero_data_retention_credit_cost?: number
   /** `http` for fresh discovery or `cache` for a cached result. */
   engine: MapBillingEngine
   /** The proxy tier the server resolved and used (never `auto`). */

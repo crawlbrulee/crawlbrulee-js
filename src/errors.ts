@@ -58,7 +58,9 @@ export class CrawlbruleeError extends Error {
  *
  * Not every 403 is a key problem: a 403 carrying `antibot_blocked` is the
  * *target site* blocking us and raises {@link AntibotBlockedError} instead.
- * Only an unrecognized 403 name falls back to this class.
+ * A 403 carrying `zero_data_retention_not_enabled` raises
+ * {@link ZeroDataRetentionNotEnabledError}. Only an unrecognized 403 name falls
+ * back to this class.
  */
 export class AuthenticationError extends CrawlbruleeError {
   constructor(
@@ -142,6 +144,22 @@ export class TargetUnreachableError extends CrawlbruleeError {
   ) {
     super(message, options)
     this.name = 'TargetUnreachableError'
+  }
+}
+
+/**
+ * Raised when you send `zero_data_retention: true` but the option is not
+ * enabled for your organization (HTTP 403, `zero_data_retention_not_enabled`).
+ * The request is not billed. Not an API-key problem, so it is not an
+ * {@link AuthenticationError}. See https://crawlbrulee.com/docs/zero-data-retention.
+ */
+export class ZeroDataRetentionNotEnabledError extends CrawlbruleeError {
+  constructor(
+    message: string,
+    options: { status: number; errorName: ApiErrorName; response?: ApiErrorResponse }
+  ) {
+    super(message, options)
+    this.name = 'ZeroDataRetentionNotEnabledError'
   }
 }
 
@@ -327,6 +345,9 @@ export function createApiError(body: ApiErrorResponse, status: number): Crawlbru
 
     case 'target_unreachable':
       return new TargetUnreachableError(message, { status, errorName: name, response })
+
+    case 'zero_data_retention_not_enabled':
+      return new ZeroDataRetentionNotEnabledError(message, { status, errorName: name, response })
 
     case 'invalid_credentials':
     case 'access_denied':

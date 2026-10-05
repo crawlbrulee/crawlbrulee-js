@@ -13,6 +13,7 @@ import {
   TransportError,
   UsageAllocationError,
   ValidationError,
+  ZeroDataRetentionNotEnabledError,
   isCrawlbruleeError,
 } from '../src/index.js'
 
@@ -134,6 +135,48 @@ describe('Error mapping', () => {
       expect(e.status).toBe(403)
       expect(e.errorName).toBe('antibot_blocked')
     }
+  })
+
+  it('maps 403 zero_data_retention_not_enabled to ZeroDataRetentionNotEnabledError', async () => {
+    const q = createFetchQueue()
+    const body = {
+      name: 'zero_data_retention_not_enabled',
+      message:
+        'zero_data_retention is not enabled for your organization. Contact us to turn it on.',
+    }
+    q.enqueue(jsonResponse(body, 403))
+    q.enqueue(jsonResponse(body, 403))
+    const client = buildClient(q.fetch)
+
+    for (const call of [
+      () => client.scrape({ url: 'https://example.com', zero_data_retention: true }),
+      () => client.map({ url: 'https://example.com', zero_data_retention: true }),
+    ]) {
+      try {
+        await call()
+        throw new Error('expected throw')
+      } catch (err) {
+        expect(err).toBeInstanceOf(ZeroDataRetentionNotEnabledError)
+        // Not a key problem and not the target blocking us.
+        expect(err).not.toBeInstanceOf(AuthenticationError)
+        expect(err).not.toBeInstanceOf(AntibotBlockedError)
+        const e = err as ZeroDataRetentionNotEnabledError
+        expect(e.name).toBe('ZeroDataRetentionNotEnabledError')
+        expect(e.status).toBe(403)
+        expect(e.errorName).toBe('zero_data_retention_not_enabled')
+        expect(e.message).toBe(body.message)
+      }
+    }
+  })
+
+  it('keeps an unknown 403 name as AuthenticationError', async () => {
+    const q = createFetchQueue()
+    q.enqueue(jsonResponse({ name: 'something_else', message: 'nope' }, 403))
+    const client = buildClient(q.fetch)
+
+    await expect(client.scrape({ url: 'https://example.com' })).rejects.toBeInstanceOf(
+      AuthenticationError
+    )
   })
 
   it('maps 422 too_many_redirects to TooManyRedirectsError, not ValidationError', async () => {

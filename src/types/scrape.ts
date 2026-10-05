@@ -126,6 +126,13 @@ export interface ScrapeRequest {
   proxy?: ProxyTier
   /** Optional locale + country emulation. */
   location?: ScrapeLocation
+  /**
+   * Keeps the result out of the shared cache; anything stored to deliver it is
+   * kept for 24 hours, then deleted. Adds 1 credit. Must be enabled for your
+   * organization, or the request fails with {@link ZeroDataRetentionNotEnabledError}.
+   * See https://crawlbrulee.com/docs/zero-data-retention.
+   */
+  zero_data_retention?: boolean
 }
 
 /**
