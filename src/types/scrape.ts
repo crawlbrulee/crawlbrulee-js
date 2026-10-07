@@ -196,7 +196,10 @@ export interface ScreenshotProperties {
 export interface ScreenshotSlice {
   /** 0-based row index of this slice. */
   row_nr: number
-  /** Signed URL to download this slice image. */
+  /**
+   * Signed URL to download this slice image. Expires 24 hours after the scrape (for an async scrape, 24 hours after
+   * it was submitted). Download the image; don't keep the link.
+   */
   url: string
   type: 'slice'
   /** Image-level properties of this slice. */
@@ -205,7 +208,10 @@ export interface ScreenshotSlice {
 
 /** Result block returned when a screenshot was requested. */
 export interface ScreenshotResult {
-  /** Signed URL to download the full screenshot image. */
+  /**
+   * Signed URL to download the full screenshot image. Expires 24 hours after the scrape (for an async scrape, 24 hours
+   * after it was submitted). Download the image; don't keep the link.
+   */
   url: string
   /** Capture mode that was used. */
   type: ScreenshotType

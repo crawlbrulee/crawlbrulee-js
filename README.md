@@ -169,8 +169,9 @@ notes:
   `response_meta.usage.proxy` reports the tier we resolved and used — never `'auto'`. see
   [proxies & location](https://crawlbrulee.com/docs/proxies) for what each tier does.
 - **`screenshot`**: custom `viewport.width`/`height` are integers in `[16, 10000]` and `device_scale_factor` is in
-  `[1, 3]`; out-of-range values are rejected with a `400`. full capture options:
-  [screenshots](https://crawlbrulee.com/docs/scrape/screenshots).
+  `[1, 3]`; out-of-range values are rejected with a `400`. the `url` of the screenshot and of every slice is a signed
+  link that expires 24 hours after the scrape, so download the image and keep the file, not the link. full capture
+  options: [screenshots](https://crawlbrulee.com/docs/scrape/screenshots).
 - **`extract.images`**: urls preserve their query string and resolve document-relative `src`s against the full page url
   (browser parity) — the same rules as `links`. every extract field is documented under
   [extraction](https://crawlbrulee.com/docs/scrape/extraction).
@@ -222,6 +223,10 @@ look up the current state of an async job — `pending`, `running`, `done`, or `
 
 fetch the result of a completed async job. throws if the job hasn't finished yet. like `scrape()`, a job whose page came
 back as a 404 (or any other status) is a completed job — the result carries `page_status_code`.
+
+a job's status and result are available for 24 hours after you submit it. after that, `getScrapeStatus()` and
+`getScrapeResult()` throw `NotFoundError`, the same as for an unknown `jobId`. screenshot links in the result expire at
+the same moment, however late you fetch it.
 
 #### `crawlbrulee.waitForScrape(jobId, options?)`
 
@@ -431,21 +436,21 @@ always verify the signature **before** parsing or trusting the body. the `X-Cwbl
 every failure raised by the sdk extends [`CrawlbruleeError`](src/errors.ts). typed subclasses are exported for the most actionable
 cases:
 
-| class                              | when it's raised                                                                                                |
-| ---------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| `AuthenticationError`              | 401 / 403 responses (missing, invalid, or unauthorized api key).                                                |
-| `AntibotBlockedError`              | 403 `antibot_blocked` — the target site's bot protection blocked us. not a key problem.                         |
-| `TooManyRedirectsError`            | 422 `too_many_redirects` — the target site redirected in a loop. not a bad request; retrying rarely helps.      |
-| `PageTooLargeError`                | 422 `page_too_large` — the page's html was too large to process. terminal; do not retry it.                     |
-| `ZeroDataRetentionNotEnabledError` | 403 `zero_data_retention_not_enabled` — `zero_data_retention` is not enabled for your organization. not billed. |
-| `TargetUnreachableError`           | 502 `target_unreachable` — we could not reach the target site at all. not billed; retrying later may help.      |
-| `RateLimitError`                   | 429 responses. exposes `retryAfterMs` and `limitedBy` when the server provided them.                            |
-| `UsageAllocationError`             | the org's plan limit was hit. exposes `reason` (`credit_limit`, `concurrency_limit`, …) and `usage`.            |
-| `ValidationError`                  | 4xx caused by a bad request (`invalid_url`, `url_too_long`, `blocked_url`, …).                                  |
-| `NotFoundError`                    | 404 from our api (e.g. unknown async `jobId`). never the target page — see below.                               |
-| `ServiceUnavailableError`          | 503 responses (`service_unavailable`). the api is temporarily unavailable — transient, retry it.                |
-| `TransportError`                   | network failures, aborts, non-json responses, request body read failures.                                       |
-| `CrawlbruleeError`                 | base class — used for any other api error. always has `status`, `errorName`, `message`.                         |
+| class                              | when it's raised                                                                                                              |
+| ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `AuthenticationError`              | 401 / 403 responses (missing, invalid, or unauthorized api key).                                                              |
+| `AntibotBlockedError`              | 403 `antibot_blocked` — the target site's bot protection blocked us. not a key problem.                                       |
+| `TooManyRedirectsError`            | 422 `too_many_redirects` — the target site redirected in a loop. not a bad request; retrying rarely helps.                    |
+| `PageTooLargeError`                | 422 `page_too_large` — the page's html was too large to process. terminal; do not retry it.                                   |
+| `ZeroDataRetentionNotEnabledError` | 403 `zero_data_retention_not_enabled` — `zero_data_retention` is not enabled for your organization. not billed.               |
+| `TargetUnreachableError`           | 502 `target_unreachable` — we could not reach the target site at all. not billed; retrying later may help.                    |
+| `RateLimitError`                   | 429 responses. exposes `retryAfterMs` and `limitedBy` when the server provided them.                                          |
+| `UsageAllocationError`             | the org's plan limit was hit. exposes `reason` (`credit_limit`, `concurrency_limit`, …) and `usage`.                          |
+| `ValidationError`                  | 4xx caused by a bad request (`invalid_url`, `url_too_long`, `blocked_url`, …).                                                |
+| `NotFoundError`                    | 404 from our api (e.g. an unknown async `jobId`, or one submitted more than 24 hours ago). never the target page — see below. |
+| `ServiceUnavailableError`          | 503 responses (`service_unavailable`). the api is temporarily unavailable — transient, retry it.                              |
+| `TransportError`                   | network failures, aborts, non-json responses, request body read failures.                                                     |
+| `CrawlbruleeError`                 | base class — used for any other api error. always has `status`, `errorName`, `message`.                                       |
 
 ```ts
 import { Crawlbrulee, RateLimitError, UsageAllocationError } from '@crawlbrulee/sdk'
