@@ -4,6 +4,12 @@ all notable changes to `@crawlbrulee/sdk` are documented here.
 
 this project follows [Semantic Versioning](https://semver.org). while on `0.x`, minor versions may include breaking changes.
 
+## 1.3.1 (2026-10-09)
+
+### changed
+
+- **docs only.** the readme and the `cleaned_html` type comment say what cleanup removes: scripts, styles, ads, popups and cookie banners. the menu and the footer stay unless you exclude them with css selectors. before, they said the menu and the footer were removed too. no code changes.
+
 ## 1.3.0 (2026-10-09)
 
 ### added
