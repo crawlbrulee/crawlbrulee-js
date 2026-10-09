@@ -127,7 +127,7 @@ export type ScrapeElementValue =
 export interface ScrapeExtract {
   /** Extract page metadata (title, description, OG/Twitter tags, etc.). Default `true`. */
   metadata?: boolean
-  /** Extract cleaned HTML (main content only). Default `true`. */
+  /** Extract cleaned HTML: the page body with scripts, styles, ads and cookie banners removed. Default `true`. */
   cleaned_html?: boolean
   /** Extract the page as clean Markdown. Default `false`. */
   markdown?: boolean
