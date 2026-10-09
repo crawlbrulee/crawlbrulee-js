@@ -1,6 +1,122 @@
 import type { ProxyTier, ResponseMeta, ScreenshotRequest, ScreenshotType } from './common.js'
 
 /**
+ * What an `extract.elements` spec reads from each match: its `text` (the
+ * default), its outer `html`, or one `attribute`.
+ */
+export type ScrapeElementOutput = 'text' | 'html' | 'attribute'
+
+/** What every spec has, with or without `fields`. */
+interface ScrapeElementSpecBase {
+  /** CSS selector. At most 500 characters. */
+  selector: string
+  /** Return every match as a list instead of the first match. Default `false`. */
+  all?: boolean
+}
+
+/**
+ * A spec that reads one value from each match, with no `fields`. It is also the
+ * innermost spec: {@link ScrapeElementSpec} nests `fields` up to 3 levels, and a
+ * spec inside the third `fields` must be this one.
+ *
+ * See https://crawlbrulee.com/docs/scrape/elements for the selector rules and limits.
+ */
+export interface ScrapeElementLeafSpec extends ScrapeElementSpecBase {
+  /** What to read from the match. Default `text`. */
+  output?: ScrapeElementOutput
+  /**
+   * The attribute to read, at most 100 characters. Required when `output` is
+   * `attribute`, and not allowed with any other `output`. `href` and `src` come
+   * back as full urls. A match without the attribute is `null`, and is left out
+   * of an `all: true` list.
+   */
+  attribute?: string
+  /** Not allowed here. Use a spec with `fields` instead. */
+  fields?: never
+}
+
+/**
+ * A spec with `fields`: each match becomes an object. `fields` can't be
+ * combined with `output` or `attribute`, and an empty `fields` is refused.
+ */
+interface ScrapeElementSpecWithFields<Field> extends ScrapeElementSpecBase {
+  /** Values read inside each match, by name. At least one. */
+  fields: Record<string, string | Field>
+  /** Not allowed with `fields`. */
+  output?: never
+  /** Not allowed with `fields`. */
+  attribute?: never
+}
+
+/**
+ * A spec inside the second `fields`. If it has `fields` of its own, that is the
+ * third and last `fields`, and the specs inside it have no `fields`.
+ */
+export type ScrapeElementNestedFieldSpec =
+  | ScrapeElementLeafSpec
+  | ScrapeElementSpecWithFields<ScrapeElementLeafSpec>
+
+/** A spec inside the first `fields` (the one on a {@link ScrapeElementSpec}). */
+export type ScrapeElementFieldSpec =
+  | ScrapeElementLeafSpec
+  | ScrapeElementSpecWithFields<ScrapeElementNestedFieldSpec>
+
+/**
+ * The full spec for one name in `extract.elements`.
+ *
+ * With `fields` (instead of `output` and `attribute`, never both), each match
+ * becomes an object: every field is a name and a selector read inside that
+ * match only. So a list of product cards can return a title, price and url per
+ * card. An empty `fields` is refused. Fields nest up to 3 levels; the types
+ * stop you from going deeper.
+ *
+ * See https://crawlbrulee.com/docs/scrape/elements for the selector rules and limits.
+ */
+export type ScrapeElementSpec =
+  | ScrapeElementLeafSpec
+  | ScrapeElementSpecWithFields<ScrapeElementFieldSpec>
+
+/**
+ * Named values to read from the page by CSS selector, sent as
+ * `extract.elements`. Each key is a name you pick; each value is a selector
+ * string (the text of the first match) or a {@link ScrapeElementSpec}. The
+ * values come back on {@link ScrapeResponse.elements} under the same names.
+ *
+ * ```ts
+ * const elements: ScrapeElements = {
+ *   heading: 'h1',
+ *   books: {
+ *     selector: 'article.product_pod',
+ *     all: true,
+ *     fields: {
+ *       title: { selector: 'h3 a', output: 'attribute', attribute: 'title' },
+ *       price: '.price_color',
+ *     },
+ *   },
+ * }
+ * ```
+ *
+ * See https://crawlbrulee.com/docs/scrape/elements.
+ */
+export type ScrapeElements = Record<string, string | ScrapeElementSpec>
+
+/** One match read with `fields`: field name → value. */
+export interface ScrapeElementObject {
+  [name: string]: ScrapeElementValue
+}
+
+/**
+ * The value for one name in {@link ScrapeResponse.elements}: a string, an
+ * object (a spec with `fields`), a list of either (`all: true`), or `null` when
+ * nothing matched (`[]` with `all: true`).
+ */
+export type ScrapeElementValue =
+  | string
+  | ScrapeElementObject
+  | (string | ScrapeElementObject)[]
+  | null
+
+/**
  * Which content formats to extract from the scraped page. Every field is
  * optional; the server defaults are noted on each field. The default request
  * extracts `{ metadata: true, cleaned_html: true }`.
@@ -35,6 +151,14 @@ export interface ScrapeExtract {
    * `inline_images_truncated` warning is returned.
    */
   images?: boolean
+  /**
+   * Named values to read from the page by CSS selector. They come back on the
+   * top-level `elements` field under the same names. Read after `cleanup`, from
+   * the same page as `links` and `images`. No extra credits, also when the
+   * page comes from cache. See {@link ScrapeElements} and
+   * https://crawlbrulee.com/docs/scrape/elements.
+   */
+  elements?: ScrapeElements
   /** Capture a screenshot. Omit to skip; set to a `ScreenshotRequest` to enable. */
   screenshot?: ScreenshotRequest
 }
@@ -42,8 +166,8 @@ export interface ScrapeExtract {
 /**
  * What is removed from the page before any output is built.
  *
- * Applies to `markdown`, `cleaned_html`, `links` and `images` on every engine,
- * and to the screenshot. It never applies to `raw_html` — that is always the
+ * Applies to `markdown`, `cleaned_html`, `links`, `images` and `elements` on
+ * every engine, and to the screenshot. It never applies to `raw_html` — that is always the
  * page as it arrived, before anything was removed.
  */
 export interface ScrapeCleanup {
@@ -57,8 +181,8 @@ export interface ScrapeCleanup {
    * CSS selectors whose elements are removed before anything is captured. Use
    * it for a banner or widget `ads_and_popups` does not recognise.
    *
-   * At most 100 selectors, each at most 500 characters. Sending any selector
-   * here makes the request skip the cache, so it always costs a live fetch.
+   * At most 100 selectors, each at most 500 characters. A cached result is
+   * only reused for a request that removes the same selectors.
    */
   exclude_selectors?: string[]
 }
@@ -66,10 +190,10 @@ export interface ScrapeCleanup {
 /**
  * Cache settings for a scrape request. `max_age` is the only cache control.
  * A cached result has to match the url, the screenshot setup (type, viewport,
- * device mode), `cleanup.ads_and_popups` and `location.locale`, and
- * `require_js: true` only matches browser-rendered results.
- * `cleanup.exclude_selectors` and a non-zero `actions_before` wait or scroll
- * disable caching for that request.
+ * device mode), `cleanup.ads_and_popups`, `cleanup.exclude_selectors` and
+ * `location.locale`, and `require_js: true` only matches browser-rendered
+ * results. A non-zero `actions_before` wait or scroll disables caching for that
+ * request.
  */
 export interface ScrapeCache {
   /**
@@ -113,7 +237,7 @@ export interface ScrapeRequest {
   require_js?: boolean
   /**
    * What is removed from the page before any output is built. Shapes
-   * `markdown`, `cleaned_html`, `links`, `images` and the screenshot.
+   * `markdown`, `cleaned_html`, `links`, `images`, `elements` and the screenshot.
    *
    * Never applies to `raw_html`, which is always the page before anything was
    * removed.
@@ -290,8 +414,9 @@ export interface ScrapeMetadata {
  * - `links_truncated` — the page had more than 30 000 links.
  * - `inline_images_truncated` — the page had more than 10 000 inline images.
  * - `raw_html_truncated` — the page body exceeded 10 000 000 characters of HTML.
- * - `metadata_truncated` — the page `<head>` exceeded 2 000 000 characters of
- *   HTML, so some metadata may be missing.
+ * - `elements_truncated` — at least one `elements` value hit a limit: a list
+ *   was cut, or a value too large to return is `null` (never cut short). See
+ *   https://crawlbrulee.com/docs/scrape/elements for the limits.
  *
  * Unavailability — that section's extraction failed, so the field is omitted
  * or empty while the rest of the scrape succeeded. These let you tell "the page
@@ -300,9 +425,15 @@ export interface ScrapeMetadata {
  * - `links_unavailable` — link extraction failed.
  * - `inline_images_unavailable` — image extraction failed.
  * - `metadata_unavailable` — metadata extraction failed.
+ * - `screenshot_unavailable` — a screenshot was asked for, but the page came
+ *   back without one. The rest of the result is there.
  *
  * The page body has no such code: if it can't be extracted the scrape fails
  * outright rather than returning a hollow `200`, and isn't billed.
+ *
+ * `metadata_truncated` is deprecated: metadata no longer has a size limit of
+ * its own, so new scrapes never send it. It stays in the union because results
+ * stored before that change can still carry it. Don't rely on it in new code.
  */
 export type ScrapeWarningCode =
   | 'screenshot_truncated'
@@ -310,9 +441,11 @@ export type ScrapeWarningCode =
   | 'inline_images_truncated'
   | 'raw_html_truncated'
   | 'metadata_truncated'
+  | 'elements_truncated'
   | 'links_unavailable'
   | 'inline_images_unavailable'
   | 'metadata_unavailable'
+  | 'screenshot_unavailable'
 
 /**
  * Successful response from `POST /api/scrape` and `GET /api/scrape/result/:jobId`.
@@ -351,7 +484,7 @@ export interface ScrapeResponse {
   content_type?: string
   /**
    * Extract fields that were requested but aren't supported for this
-   * content type (e.g. asking for `markdown` of a PDF).
+   * content type (e.g. asking for `metadata` or `elements` of a JSON file).
    */
   unsupported_fields?: string[]
   /** Page content converted to clean Markdown (when `extract.markdown`). */
@@ -368,10 +501,17 @@ export interface ScrapeResponse {
   /** Links discovered on the page (when `extract.links`). */
   links?: PageLink[]
   /**
+   * The values asked for in `extract.elements`, under the same names. Every
+   * requested name is present, at every level of `fields`; a name with no
+   * match is `null` (`[]` with `all: true`). See {@link ScrapeElementValue}.
+   */
+  elements?: Record<string, ScrapeElementValue>
+  /**
    * Captured screenshot (when `extract.screenshot`). In rare cases a screenshot
    * can't be captured; when you also requested other outputs those are still
-   * returned and this field is simply left out (so it reads back as
-   * `undefined`) — guard with `page.screenshot?.url`. A screenshot-only request
+   * returned and this field is left out (so it reads back as `undefined`), with
+   * a `screenshot_unavailable` warning on `warnings` to tell this case apart —
+   * guard with `page.screenshot?.url`. A screenshot-only request
    * that can't deliver fails instead of returning an empty response: a `422`
    * with `unsupported_screenshot_output` when the content type can't be
    * screenshotted, a `500` when the capture itself failed — and isn't billed.

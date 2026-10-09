@@ -4,6 +4,23 @@ all notable changes to `@crawlbrulee/sdk` are documented here.
 
 this project follows [Semantic Versioning](https://semver.org). while on `0.x`, minor versions may include breaking changes.
 
+## 1.3.0 (2026-10-09)
+
+### added
+
+- **`extract.elements`**: read named values from the page by CSS selector. new request types `ScrapeElements`,
+  `ScrapeElementSpec`, `ScrapeElementFieldSpec`, `ScrapeElementNestedFieldSpec`, `ScrapeElementLeafSpec` and
+  `ScrapeElementOutput`, `elements` on `ScrapeResponse` (typed as `ScrapeElementValue` and `ScrapeElementObject`), and
+  `elements_truncated` in `ScrapeWarningCode`. see [elements](https://crawlbrulee.com/docs/scrape/elements).
+- **`screenshot_unavailable`** in `ScrapeWarningCode`: a screenshot was asked for, but the page came back without one.
+
+### changed
+
+- **docs only.** `cleanup.exclude_selectors` no longer skips the cache: a cached result is reused for a request that
+  removes the same selectors. the type comments say so.
+- **`metadata_truncated` is deprecated** in `ScrapeWarningCode`. metadata no longer has a size limit
+  of its own, so new scrapes never send it; results stored before that change can still carry it.
+
 ## 1.2.1 (2026-10-07)
 
 ### changed
