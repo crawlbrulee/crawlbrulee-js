@@ -1,0 +1,6 @@
+# Block packages younger than 7 days (10080 minutes) — guards against
+# rapid publish-and-pull supply-chain attacks (e.g. Axios, Shai-Hulud).
+# Override with `--config.minimumReleaseAge=0` when intentionally testing
+# brand-new releases. Read from here, not .npmrc (pnpm 10 ignores the
+# camelCase key there).
+minimumReleaseAge: 10080

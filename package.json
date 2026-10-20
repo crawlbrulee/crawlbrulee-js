@@ -20,7 +20,7 @@
   ],
   "license": "Apache-2.0",
   "type": "module",
-  "packageManager": "pnpm@10.10.0",
+  "packageManager": "pnpm@10.24.0",
   "sideEffects": false,
   "repository": {
     "type": "git",
@@ -75,12 +75,12 @@
   "devDependencies": {
     "@eslint/js": "^9.18.0",
     "@types/node": "^22.10.0",
-    "@vitest/coverage-v8": "^2.1.0",
+    "@vitest/coverage-v8": "^4.1.11",
     "eslint": "^9.18.0",
     "prettier": "^3.4.0",
     "tsdown": "^0.22.11",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.64.0",
-    "vitest": "^2.1.0"
+    "vitest": "^4.1.11"
   }
 }
