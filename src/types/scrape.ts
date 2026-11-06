@@ -87,11 +87,11 @@ export type ScrapeElementSpec =
  * const elements: ScrapeElements = {
  *   heading: 'h1',
  *   books: {
- *     selector: 'article.product_pod',
+ *     selector: 'article.book',
  *     all: true,
  *     fields: {
  *       title: { selector: 'h3 a', output: 'attribute', attribute: 'title' },
- *       price: '.price_color',
+ *       price: '.price',
  *     },
  *   },
  * }

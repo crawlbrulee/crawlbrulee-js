@@ -13,11 +13,11 @@ import { buildClient, createFetchQueue, jsonResponse, lastCallOf } from './helpe
 const booksElements: ScrapeElements = {
   heading: 'h1',
   books: {
-    selector: 'article.product_pod',
+    selector: 'article.book',
     all: true,
     fields: {
       title: { selector: 'h3 a', output: 'attribute', attribute: 'title' },
-      price: '.price_color',
+      price: '.price',
       url: { selector: 'h3 a', output: 'attribute', attribute: 'href' },
     },
   },
@@ -25,23 +25,23 @@ const booksElements: ScrapeElements = {
 }
 
 const booksResult = {
-  url: 'https://books.toscrape.com/',
-  requested_url: 'https://books.toscrape.com/',
+  url: 'https://shop.example.com/books/',
+  requested_url: 'https://shop.example.com/books/',
   elements: {
-    heading: 'All products',
+    heading: 'Books',
     books: [
       {
-        title: 'A Light in the Attic',
-        price: '£51.77',
-        url: 'https://books.toscrape.com/catalogue/a-light-in-the-attic_1000/index.html',
+        title: 'The Night Garden',
+        price: '€18.90',
+        url: 'https://shop.example.com/books/the-night-garden',
       },
       {
-        title: 'Tipping the Velvet',
-        price: '£53.74',
-        url: 'https://books.toscrape.com/catalogue/tipping-the-velvet_999/index.html',
+        title: 'Salt and Stone',
+        price: '€22.50',
+        url: 'https://shop.example.com/books/salt-and-stone',
       },
     ],
-    next_page: 'https://books.toscrape.com/catalogue/page-2.html',
+    next_page: 'https://shop.example.com/books/?page=2',
   },
   response_meta: { usage: { total_credit_cost: 1, engine: 'http', proxy: 'basic' } },
 }
@@ -53,14 +53,14 @@ describe('extract.elements — request', () => {
     const client = buildClient(q.fetch)
 
     await client.scrape({
-      url: 'https://books.toscrape.com/',
+      url: 'https://shop.example.com/books/',
       extract: { elements: booksElements },
     })
 
     const { url, init } = lastCallOf(q.mock)
     expect(url).toBe('https://api.test.example/api/scrape')
     expect(JSON.parse(init.body as string)).toEqual({
-      url: 'https://books.toscrape.com/',
+      url: 'https://shop.example.com/books/',
       extract: { elements: booksElements },
     })
   })
@@ -170,7 +170,7 @@ describe('extract.elements — response', () => {
     const client = buildClient(q.fetch)
 
     const page = await client.scrape({
-      url: 'https://books.toscrape.com/',
+      url: 'https://shop.example.com/books/',
       extract: {
         elements: {
           ...booksElements,
@@ -181,8 +181,8 @@ describe('extract.elements — response', () => {
       },
     })
 
-    expect(page.elements?.heading).toBe('All products')
-    expect(page.elements?.next_page).toBe('https://books.toscrape.com/catalogue/page-2.html')
+    expect(page.elements?.heading).toBe('Books')
+    expect(page.elements?.next_page).toBe('https://shop.example.com/books/?page=2')
     expect(page.elements?.missing).toBeNull()
     expect(page.elements?.empty_list).toEqual([])
     expect(page.elements?.tags).toEqual(['a', 'b'])
@@ -191,8 +191,8 @@ describe('extract.elements — response', () => {
     expect(Array.isArray(books)).toBe(true)
     if (!Array.isArray(books)) throw new Error('books should be a list')
     const first = books[0] as ScrapeElementObject
-    expect(first.title).toBe('A Light in the Attic')
-    expect(first.price).toBe('£51.77')
+    expect(first.title).toBe('The Night Garden')
+    expect(first.price).toBe('€18.90')
   })
 
   it('getScrapeResult returns nested element objects 3 levels deep', async () => {
@@ -226,7 +226,7 @@ describe('extract.elements — response', () => {
     const client = buildClient(q.fetch)
 
     const page = await client.scrape({
-      url: 'https://books.toscrape.com/',
+      url: 'https://shop.example.com/books/',
       extract: { elements: booksElements },
     })
 

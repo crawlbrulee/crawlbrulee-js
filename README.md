@@ -203,24 +203,24 @@ same names. a name with no match is `null`, or `[]` with `all: true`. it costs n
 
 ```ts
 const page = await crawlbrulee.scrape({
-  url: 'https://books.toscrape.com/',
+  url: 'https://shop.example.com/books/',
   extract: {
     elements: {
       heading: 'h1',
       books: {
-        selector: 'article.product_pod',
+        selector: 'article.book',
         all: true,
         fields: {
           title: { selector: 'h3 a', output: 'attribute', attribute: 'title' },
-          price: '.price_color',
+          price: '.price',
         },
       },
     },
   },
 })
 
-page.elements?.heading // 'All products'
-page.elements?.books // [{ title: 'A Light in the Attic', price: '£51.77' }, …]
+page.elements?.heading // 'Books'
+page.elements?.books // [{ title: 'The Night Garden', price: '€18.90' }, …]
 ```
 
 the request types are `ScrapeElements` and `ScrapeElementSpec`; each value on `page.elements` is a

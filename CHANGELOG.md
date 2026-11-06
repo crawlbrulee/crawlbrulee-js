@@ -17,6 +17,11 @@ this project follows [Semantic Versioning](https://semver.org). while on `0.x`, 
 - **`:scope` in `fields`.** the docs for `fields` say that the selector `:scope` reads the match itself, for example
   the matched element's own `href`. a field without it is still read inside the match only.
 
+### changed
+
+- **docs only.** the readme and the `fields` type comment use a made-up shop (`shop.example.com`) for their
+  examples, instead of a scraping sandbox run by another company.
+
 ## 1.3.1 (2026-10-09)
 
 ### changed
