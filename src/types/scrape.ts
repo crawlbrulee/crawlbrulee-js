@@ -40,7 +40,7 @@ export interface ScrapeElementLeafSpec extends ScrapeElementSpecBase {
  * combined with `output` or `attribute`, and an empty `fields` is refused.
  */
 interface ScrapeElementSpecWithFields<Field> extends ScrapeElementSpecBase {
-  /** Values read inside each match, by name. At least one. */
+  /** Values read inside each match, by name; `:scope` reads the match itself. At least one. */
   fields: Record<string, string | Field>
   /** Not allowed with `fields`. */
   output?: never
@@ -66,8 +66,9 @@ export type ScrapeElementFieldSpec =
  *
  * With `fields` (instead of `output` and `attribute`, never both), each match
  * becomes an object: every field is a name and a selector read inside that
- * match only. So a list of product cards can return a title, price and url per
- * card. An empty `fields` is refused. Fields nest up to 3 levels; the types
+ * match; the selector `:scope` reads the match itself, for example the matched
+ * element's own `href`. So a list of products can return a title, price and url per
+ * product. An empty `fields` is refused. Fields nest up to 3 levels; the types
  * stop you from going deeper.
  *
  * See https://crawlbrulee.com/docs/scrape/targeted-extraction for the selector rules and limits.

@@ -198,7 +198,7 @@ types mirror.
 
 `extract.elements` reads named values from the page by CSS selector. each key is a name you pick. each value is a
 selector (the text of the first match) or a spec: `output` (`text`, `html` or `attribute`), `all: true` for every match
-as a list, and `fields` to read several values inside each match. the values come back on `page.elements` under the
+as a list, and `fields` to read several values inside each match (`:scope` reads the match itself). the values come back on `page.elements` under the
 same names. a name with no match is `null`, or `[]` with `all: true`. it costs no extra credits.
 
 ```ts
