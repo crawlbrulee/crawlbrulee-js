@@ -19,7 +19,7 @@ interface ScrapeElementSpecBase {
  * innermost spec: {@link ScrapeElementSpec} nests `fields` up to 3 levels, and a
  * spec inside the third `fields` must be this one.
  *
- * See https://crawlbrulee.com/docs/scrape/elements for the selector rules and limits.
+ * See https://crawlbrulee.com/docs/scrape/targeted-extraction for the selector rules and limits.
  */
 export interface ScrapeElementLeafSpec extends ScrapeElementSpecBase {
   /** What to read from the match. Default `text`. */
@@ -70,7 +70,7 @@ export type ScrapeElementFieldSpec =
  * card. An empty `fields` is refused. Fields nest up to 3 levels; the types
  * stop you from going deeper.
  *
- * See https://crawlbrulee.com/docs/scrape/elements for the selector rules and limits.
+ * See https://crawlbrulee.com/docs/scrape/targeted-extraction for the selector rules and limits.
  */
 export type ScrapeElementSpec =
   | ScrapeElementLeafSpec
@@ -96,7 +96,7 @@ export type ScrapeElementSpec =
  * }
  * ```
  *
- * See https://crawlbrulee.com/docs/scrape/elements.
+ * See https://crawlbrulee.com/docs/scrape/targeted-extraction.
  */
 export type ScrapeElements = Record<string, string | ScrapeElementSpec>
 
@@ -156,7 +156,7 @@ export interface ScrapeExtract {
    * top-level `elements` field under the same names. Read after `cleanup`, from
    * the same page as `links` and `images`. No extra credits, also when the
    * page comes from cache. See {@link ScrapeElements} and
-   * https://crawlbrulee.com/docs/scrape/elements.
+   * https://crawlbrulee.com/docs/scrape/targeted-extraction.
    */
   elements?: ScrapeElements
   /** Capture a screenshot. Omit to skip; set to a `ScreenshotRequest` to enable. */
@@ -193,7 +193,8 @@ export interface ScrapeCleanup {
  * device mode), `cleanup.ads_and_popups`, `cleanup.exclude_selectors` and
  * `location.locale`, and `require_js: true` only matches browser-rendered
  * results. A non-zero `actions_before` wait or scroll disables caching for that
- * request.
+ * request. A request with `headers` or `cookies` never reads from or writes to
+ * the cache.
  */
 export interface ScrapeCache {
   /**
@@ -207,8 +208,8 @@ export interface ScrapeCache {
 /** Optional locale + country emulation for the scrape. */
 export interface ScrapeLocation {
   /**
-   * BCP-47 locale (e.g. `en-US`, `de-DE`, `pt-BR`). Sent as `Accept-Language`
-   * and reflected in `navigator.language` when JS rendering is requested.
+   * BCP-47 locale (e.g. `en-US`, `de-DE`, `pt-BR`): the language to ask the
+   * site for.
    */
   locale?: string
   /**
@@ -216,6 +217,16 @@ export interface ScrapeLocation {
    * emulated browser timezone. Case-insensitive.
    */
   country?: string
+}
+
+/**
+ * One cookie to send to the site, sent as `cookies` on a scrape request. The
+ * `name` can't be empty. The `value` may not hold `;` or start or end with a
+ * space. See https://crawlbrulee.com/docs/scrape/custom-headers-and-cookies.
+ */
+export interface ScrapeCookie {
+  name: string
+  value: string
 }
 
 /** Request body for `POST /api/scrape` (and `POST /api/scrape/async`). */
@@ -257,6 +268,38 @@ export interface ScrapeRequest {
    * See https://crawlbrulee.com/docs/zero-data-retention.
    */
   zero_data_retention?: boolean
+  /**
+   * Your own HTTP headers to send to the site with the request, for example
+   * `Authorization`, an api key, or a fixed `User-Agent` that the site has on
+   * an allowlist. Sent only to the origin of `url`
+   * (same scheme, host and port), or to its https version when `url` is http,
+   * and not on a redirect to another origin.
+   *
+   * Up to 10 headers; headers and cookies together up to 16384 bytes. Values
+   * are printable ASCII, with no space or tab at either end. A `Referer` must be
+   * the full http or https url of a public page, with no username or password.
+   * Use `cookies` for cookies and `location.locale` for the language. `Range`,
+   * conditional headers such as `If-None-Match`, and headers a browser doesn't
+   * let a web page set can't be set here either: a `400`
+   * ({@link ValidationError}) names the header. Your own `User-Agent` can lower
+   * the success rate and adds the `custom_user_agent` warning. Never put
+   * secrets in the `User-Agent`.
+   *
+   * A request with headers or cookies never reads from or writes to the
+   * cache. On a plain http url they travel unencrypted.
+   * See https://crawlbrulee.com/docs/scrape/custom-headers-and-cookies.
+   */
+  headers?: Record<string, string>
+  /**
+   * Your own cookies to send to the site with the request. Sent only to
+   * the host of `url`. Cookies the site sets while redirecting are not kept.
+   *
+   * Up to 20 cookies, each up to 4096 bytes (name and value), counted toward
+   * the limit on `headers`. A `__Secure-`, `__Host-` or `__Http-` cookie needs
+   * an https url. A request with headers or cookies never reads from or writes
+   * to the cache. See https://crawlbrulee.com/docs/scrape/custom-headers-and-cookies.
+   */
+  cookies?: ScrapeCookie[]
 }
 
 /**
@@ -405,7 +448,7 @@ export interface ScrapeMetadata {
 
 /**
  * Non-error notices returned on {@link ScrapeResponse.warnings}. Stable codes —
- * safe to switch on. They come in two families.
+ * safe to switch on. They come in three groups.
  *
  * Truncation — the output is there, but capped:
  *
@@ -416,7 +459,7 @@ export interface ScrapeMetadata {
  * - `raw_html_truncated` — the page body exceeded 10 000 000 characters of HTML.
  * - `elements_truncated` — at least one `elements` value hit a limit: a list
  *   was cut, or a value too large to return is `null` (never cut short). See
- *   https://crawlbrulee.com/docs/scrape/elements for the limits.
+ *   https://crawlbrulee.com/docs/scrape/targeted-extraction for the limits.
  *
  * Unavailability — that section's extraction failed, so the field is omitted
  * or empty while the rest of the scrape succeeded. These let you tell "the page
@@ -427,6 +470,11 @@ export interface ScrapeMetadata {
  * - `metadata_unavailable` — metadata extraction failed.
  * - `screenshot_unavailable` — a screenshot was asked for, but the page came
  *   back without one. The rest of the result is there.
+ *
+ * Request notices:
+ *
+ * - `custom_user_agent`: the request set its own `User-Agent` header; this
+ *   can lower the success rate.
  *
  * The page body has no such code: if it can't be extracted the scrape fails
  * outright rather than returning a hollow `200`, and isn't billed.
@@ -446,6 +494,7 @@ export type ScrapeWarningCode =
   | 'inline_images_unavailable'
   | 'metadata_unavailable'
   | 'screenshot_unavailable'
+  | 'custom_user_agent'
 
 /**
  * Successful response from `POST /api/scrape` and `GET /api/scrape/result/:jobId`.

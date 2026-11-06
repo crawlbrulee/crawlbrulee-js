@@ -1,6 +1,13 @@
 import { describe, expect, expectTypeOf, it } from 'vitest'
 
-import type { ScrapeResponse, Usage } from '../src/index.js'
+import { ValidationError } from '../src/index.js'
+import type {
+  ScrapeCookie,
+  ScrapeRequest,
+  ScrapeResponse,
+  ScrapeWarningCode,
+  Usage,
+} from '../src/index.js'
 import { buildClient, createFetchQueue, jsonResponse, lastCallOf } from './helpers.js'
 
 describe('Crawlbrulee.scrape', () => {
@@ -254,5 +261,133 @@ describe('Crawlbrulee.scrape — zero data retention', () => {
 
   it('types zero_data_retention_credit_cost as an optional number, like the other cost parts', () => {
     expectTypeOf<Usage['zero_data_retention_credit_cost']>().toEqualTypeOf<number | undefined>()
+  })
+})
+
+describe('Crawlbrulee.scrape — headers and cookies', () => {
+  it('sends headers and cookies unchanged: header name case and cookie order are kept', async () => {
+    const q = createFetchQueue()
+    q.enqueue(
+      jsonResponse({
+        url: 'https://app.example.com/orders',
+        requested_url: 'https://app.example.com/orders',
+      })
+    )
+    const client = buildClient(q.fetch)
+
+    await client.scrape({
+      url: 'https://app.example.com/orders',
+      headers: { Authorization: 'Bearer abc', 'X-Tenant-Id': 'acme', 'x-lower-case': 'v' },
+      cookies: [
+        { name: 'session_id', value: 'a1b2c3' },
+        { name: 'theme', value: 'dark' },
+        { name: 'a_last', value: '1' },
+      ],
+    })
+
+    const body = JSON.parse(lastCallOf(q.mock).init.body as string)
+    expect(body).toEqual({
+      url: 'https://app.example.com/orders',
+      headers: { Authorization: 'Bearer abc', 'X-Tenant-Id': 'acme', 'x-lower-case': 'v' },
+      cookies: [
+        { name: 'session_id', value: 'a1b2c3' },
+        { name: 'theme', value: 'dark' },
+        { name: 'a_last', value: '1' },
+      ],
+    })
+    expect(Object.keys(body.headers)).toEqual(['Authorization', 'X-Tenant-Id', 'x-lower-case'])
+    expect(body.cookies.map((c: ScrapeCookie) => c.name)).toEqual(['session_id', 'theme', 'a_last'])
+  })
+
+  it('keeps the headers for the site in the body, apart from the request headers of the sdk', async () => {
+    const q = createFetchQueue()
+    q.enqueue(
+      jsonResponse({ url: 'https://app.example.com/', requested_url: 'https://app.example.com' })
+    )
+    const client = buildClient(q.fetch)
+
+    await client.scrape({
+      url: 'https://app.example.com',
+      headers: { Authorization: 'Bearer target' },
+    })
+
+    const { init } = lastCallOf(q.mock)
+    const sent = init.headers as Record<string, string>
+    expect(sent.authorization).toMatch(/^Bearer cwbl_/)
+    expect(sent).not.toHaveProperty('Authorization')
+    expect(JSON.parse(init.body as string).headers).toEqual({ Authorization: 'Bearer target' })
+  })
+
+  it('does not send either field when it is not set', async () => {
+    const q = createFetchQueue()
+    q.enqueue(jsonResponse({ url: 'https://example.com/', requested_url: 'https://example.com' }))
+    const client = buildClient(q.fetch)
+
+    await client.scrape({ url: 'https://example.com' })
+
+    const body = JSON.parse(lastCallOf(q.mock).init.body as string)
+    expect(body).not.toHaveProperty('headers')
+    expect(body).not.toHaveProperty('cookies')
+  })
+
+  it('reads the custom_user_agent warning', async () => {
+    const q = createFetchQueue()
+    q.enqueue(
+      jsonResponse({
+        url: 'https://example.com/',
+        requested_url: 'https://example.com',
+        warnings: ['custom_user_agent'],
+      })
+    )
+    const client = buildClient(q.fetch)
+
+    const page = await client.scrape({
+      url: 'https://example.com',
+      headers: { 'User-Agent': 'my-bot/1.0' },
+    })
+
+    expect(page.warnings).toEqual(['custom_user_agent'])
+    expectTypeOf<'custom_user_agent'>().toMatchTypeOf<ScrapeWarningCode>()
+  })
+
+  it('still reads a warning code it does not know yet', async () => {
+    const q = createFetchQueue()
+    q.enqueue(
+      jsonResponse({
+        url: 'https://example.com/',
+        requested_url: 'https://example.com',
+        warnings: ['custom_user_agent', 'some_future_code'],
+      })
+    )
+    const client = buildClient(q.fetch)
+
+    const page = await client.scrape({ url: 'https://example.com' })
+
+    expect(page.warnings).toEqual(['custom_user_agent', 'some_future_code'])
+  })
+
+  it('raises ValidationError when the api refuses a header', async () => {
+    const q = createFetchQueue()
+    q.enqueue(
+      jsonResponse(
+        {
+          name: 'validation_error',
+          message:
+            'Request validation failed: headers: "Cookie" can\'t be set as a header. Send cookies in the cookies field.',
+        },
+        400
+      )
+    )
+    const client = buildClient(q.fetch)
+
+    await expect(
+      client.scrape({ url: 'https://example.com', headers: { Cookie: 'a=b' } })
+    ).rejects.toBeInstanceOf(ValidationError)
+  })
+
+  it('types headers as a string map and cookies as a list of name and value', () => {
+    expectTypeOf<ScrapeRequest['headers']>().toEqualTypeOf<Record<string, string> | undefined>()
+    expectTypeOf<ScrapeRequest['cookies']>().toEqualTypeOf<ScrapeCookie[] | undefined>()
+    expectTypeOf<ScrapeCookie>().toEqualTypeOf<{ name: string; value: string }>()
   })
 })

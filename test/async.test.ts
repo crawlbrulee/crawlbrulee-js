@@ -32,6 +32,26 @@ describe('Crawlbrulee — async scrape lifecycle', () => {
     })
   })
 
+  it('scrapeAsync sends headers and cookies unchanged in the POST body', async () => {
+    const q = createFetchQueue()
+    q.enqueue(jsonResponse({ job_id: 'job-hc' }, 202))
+    const client = buildClient(q.fetch)
+
+    const request: AsyncScrapeRequest = {
+      url: 'https://app.example.com/orders',
+      headers: { Authorization: 'Bearer abc', 'X-Tenant-Id': 'acme' },
+      cookies: [
+        { name: 'session_id', value: 'a1b2c3' },
+        { name: 'theme', value: 'dark' },
+      ],
+    }
+    await client.scrapeAsync(request)
+
+    const { url, init } = lastCallOf(q.mock)
+    expect(url).toBe('https://api.test.example/api/scrape/async')
+    expect(JSON.parse(init.body as string)).toEqual(request)
+  })
+
   it('scrapeAsync sends webhook.url and webhook.metadata in the POST body', async () => {
     const q = createFetchQueue()
     q.enqueue(jsonResponse({ job_id: 'job-wh' }, 202))

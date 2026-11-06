@@ -4,6 +4,17 @@ all notable changes to `@crawlbrulee/sdk` are documented here.
 
 this project follows [Semantic Versioning](https://semver.org). while on `0.x`, minor versions may include breaking changes.
 
+## 1.4.0 (unreleased)
+
+### added
+
+- **`headers` and `cookies`** on `scrape` and `scrapeAsync`: send your own http headers and cookies to the site, for
+  example an `Authorization` header or a fixed `User-Agent` that a site has on its allowlist. new type `ScrapeCookie` (`{ name, value }`). headers go only to the origin
+  of `url` (or its https version, for an http url), cookies only to its host. a request with headers or cookies never reads from or writes to the cache. see
+  [headers and cookies](https://crawlbrulee.com/docs/scrape/custom-headers-and-cookies).
+- **`custom_user_agent`** in `ScrapeWarningCode`: the request set its own `User-Agent` header; this can lower the
+  success rate.
+
 ## 1.3.1 (2026-10-09)
 
 ### changed

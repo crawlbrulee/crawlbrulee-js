@@ -175,14 +175,15 @@ notes:
 - **`extract.images`**: urls preserve their query string and resolve document-relative `src`s against the full page url
   (browser parity) — the same rules as `links`. every extract field is documented under
   [extraction](https://crawlbrulee.com/docs/scrape/extraction).
-- **`warnings`**: when we complete a scrape but something is worth flagging, the codes land on `page.warnings`, in two
-  families. capped output: `screenshot_truncated` (a long page exceeded the scrolling-screenshot height cap),
+- **`warnings`**: when we complete a scrape but something is worth flagging, the codes land on `page.warnings`, in three
+  groups. capped output: `screenshot_truncated` (a long page exceeded the scrolling-screenshot height cap),
   `links_truncated` (more than 30 000 links), `inline_images_truncated` (more than 10 000 inline images),
   `raw_html_truncated` (more than 10 000 000 characters of body html), and `elements_truncated` (an `elements` value
   hit a limit, see [elements](#elements)). failed extraction of one section: `links_unavailable`,
   `inline_images_unavailable`, `metadata_unavailable`, and `screenshot_unavailable` (a screenshot was asked for, but the
   page came back without one) — the field comes back omitted or empty while the rest of the scrape succeeds, which is
-  how you tell "the page had none" from "we couldn't read them". they're stable, so you can switch on them — the union
+  how you tell "the page had none" from "we couldn't read them". and a request notice: `custom_user_agent` means the request set its own
+  `User-Agent` header, which can lower the success rate (see [headers and cookies](#headers-and-cookies)). they're stable, so you can switch on them — the union
   is exported as `ScrapeWarningCode`. `metadata_truncated` is retired and no longer sent; only results stored before
   that change can carry it. warnings are stored with the result, so cache hits and async result fetches report them
   too, filtered to the outputs you asked for.
@@ -223,7 +224,7 @@ page.elements?.books // [{ title: 'A Light in the Attic', price: '£51.77' }, �
 ```
 
 the request types are `ScrapeElements` and `ScrapeElementSpec`; each value on `page.elements` is a
-`ScrapeElementValue`. selector rules and limits: see [elements](https://crawlbrulee.com/docs/scrape/elements).
+`ScrapeElementValue`. selector rules and limits: see [targeted extraction](https://crawlbrulee.com/docs/scrape/targeted-extraction).
 
 #### zero data retention
 
@@ -235,6 +236,27 @@ console.log(page.response_meta.usage.zero_data_retention_credit_cost) // 1
 ```
 
 without it enabled, the call raises `ZeroDataRetentionNotEnabledError` (`403`, not billed).
+
+#### headers and cookies
+
+pass `headers` and `cookies` on `scrape` or `scrapeAsync` to send your own http headers and cookies to the site, for
+example an api key or a fixed `User-Agent` that a site has on its allowlist. headers go only to the origin
+of `url` (same scheme, host and port), or to its https version when `url` is http, and cookies only to its host.
+
+```ts
+const page = await crawlbrulee.scrape({
+  url: 'https://app.example.com/orders',
+  headers: { Authorization: `Bearer ${process.env.APP_TOKEN}`, 'X-Tenant-Id': 'acme' },
+  cookies: [{ name: 'session_id', value: process.env.APP_SESSION! }],
+  extract: { markdown: true },
+})
+```
+
+a request with headers or cookies is never cached: it never reads from or writes to the cache, and is billed as a
+normal fresh scrape. use `cookies` for cookies and `location.locale` for the language; a header the api doesn't accept
+raises `ValidationError` (`400`) with a message that names it. your own `User-Agent` can lower the success rate and
+adds the `custom_user_agent` warning. on a plain `http://` url, headers and cookies travel unencrypted. limits and
+rules: see [headers and cookies](https://crawlbrulee.com/docs/scrape/custom-headers-and-cookies).
 
 #### `crawlbrulee.scrapeAsync(request, options?)`
 
