@@ -4,6 +4,13 @@ all notable changes to `@crawlbrulee/sdk` are documented here.
 
 this project follows [Semantic Versioning](https://semver.org). while on `0.x`, minor versions may include breaking changes.
 
+## 1.4.1 (unreleased)
+
+### changed
+
+- **docs only.** the `ScrapeExtract` doc comments give the api's new default: a scrape with no `extract`, or with flags left out, returns `markdown` + `metadata`, not `cleaned_html` + `metadata`. naming other formats keeps the two defaults on; set `markdown: false` or `metadata: false` to turn one off.
+- **docs only.** the `screenshot` doc comment says what a screenshot-only request is: every other format off, `markdown` and `metadata` included, and no `elements`.
+
 ## 1.4.0 (2026-11-06)
 
 ### added

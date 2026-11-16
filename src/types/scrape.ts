@@ -120,7 +120,8 @@ export type ScrapeElementValue =
 /**
  * Which content formats to extract from the scraped page. Every field is
  * optional; the server defaults are noted on each field. The default request
- * extracts `{ metadata: true, cleaned_html: true }`.
+ * extracts `{ markdown: true, metadata: true }`. Naming other formats keeps
+ * these two on; set `markdown: false` or `metadata: false` to turn one off.
  *
  * `extract` only selects what is returned — changing it does not change whether
  * an otherwise identical request can be served from cache.
@@ -128,9 +129,9 @@ export type ScrapeElementValue =
 export interface ScrapeExtract {
   /** Extract page metadata (title, description, OG/Twitter tags, etc.). Default `true`. */
   metadata?: boolean
-  /** Extract cleaned HTML: the page body with scripts, styles, ads and cookie banners removed. Default `true`. */
+  /** Extract cleaned HTML: the page body with scripts, styles, ads and cookie banners removed. Default `false`. */
   cleaned_html?: boolean
-  /** Extract the page as clean Markdown. Default `false`. */
+  /** Extract the page as clean Markdown. Default `true`. */
   markdown?: boolean
   /**
    * Return the raw, unprocessed HTML. Default `false`. Capped at 10 000 000
@@ -238,7 +239,7 @@ export interface ScrapeRequest {
    * parameter is kept verbatim.
    */
   url: string
-  /** Which content formats to extract. Defaults to `metadata + cleaned_html`. */
+  /** Which content formats to extract. Defaults to `markdown + metadata`. */
   extract?: ScrapeExtract
   /** Cache settings for this request. */
   cache?: ScrapeCache
@@ -537,7 +538,7 @@ export interface ScrapeResponse {
    * content type (e.g. asking for `metadata` or `elements` of a JSON file).
    */
   unsupported_fields?: string[]
-  /** Page content converted to clean Markdown (when `extract.markdown`). */
+  /** Page content converted to clean Markdown (when `extract.markdown`, on by default). */
   markdown?: string
   /** Cleaned HTML of the main page content (when `extract.cleaned_html`). */
   cleaned_html?: string
@@ -561,8 +562,10 @@ export interface ScrapeResponse {
    * can't be captured; when you also requested other outputs those are still
    * returned and this field is left out (so it reads back as `undefined`), with
    * a `screenshot_unavailable` warning on `warnings` to tell this case apart —
-   * guard with `page.screenshot?.url`. A screenshot-only request
-   * that can't deliver fails instead of returning an empty response: a `422`
+   * guard with `page.screenshot?.url`. A screenshot-only request (every other
+   * format off: `markdown: false` and `metadata: false`, and no `cleaned_html`,
+   * `raw_html`, `links`, `images` or `elements`) that can't deliver fails
+   * instead of returning an empty response: a `422`
    * with `unsupported_screenshot_output` when the content type can't be
    * screenshotted, a `500` when the capture itself failed — and isn't billed.
    */
