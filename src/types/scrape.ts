@@ -124,7 +124,9 @@ export type ScrapeElementValue =
  * these two on; set `markdown: false` or `metadata: false` to turn one off.
  *
  * `extract` only selects what is returned — changing it does not change whether
- * an otherwise identical request can be served from cache.
+ * an otherwise identical request can be served from cache. The exceptions are
+ * `screenshot` and `pdf`: a cached copy answers them only when it has a
+ * screenshot or PDF made with the same settings.
  */
 export interface ScrapeExtract {
   /** Extract page metadata (title, description, OG/Twitter tags, etc.). Default `true`. */
@@ -163,6 +165,81 @@ export interface ScrapeExtract {
   elements?: ScrapeElements
   /** Capture a screenshot. Omit to skip; set to a `ScreenshotRequest` to enable. */
   screenshot?: ScreenshotRequest
+  /**
+   * Save the page as a PDF. Omit to skip; set to a {@link PdfRequest} to
+   * enable, where `{}` takes every default. The PDF comes back on the
+   * top-level `pdf` field. See {@link PdfRequest}.
+   */
+  pdf?: PdfRequest
+}
+
+/**
+ * How a PDF lays out the page:
+ *
+ * - `pages` (the default): the page on sheets of paper, laid out as in the
+ *   browser window and shrunk to fit the paper width.
+ * - `single_page`: one page as wide as the browser window and as tall as the
+ *   web page, up to 15 000 px.
+ */
+export type PdfLayout = 'pages' | 'single_page'
+
+/** Paper size for a PDF with `layout: 'pages'`. */
+export type PdfPaper = 'a4' | 'letter'
+
+/**
+ * Which style of the site a PDF shows: `screen` (the default), the page as it
+ * looks on screen, or `print`, the site's own print style.
+ */
+export type PdfMedia = 'screen' | 'print'
+
+/**
+ * PDF settings. Pass this on `extract.pdf`; `{}` takes every default.
+ *
+ * The PDF is a real document with selectable text and working links,
+ * backgrounds printed, and no header or footer added. The request runs in a
+ * browser. It costs what a screenshot costs, and a PDF and a screenshot in one
+ * request are billed once. When the PDF can't be made (it would be over 50 MB,
+ * it takes too long, or the page could not be loaded), the rest of the scrape
+ * still comes back with the `pdf_unavailable` warning, and the request costs
+ * what it costs without the PDF.
+ *
+ * A cached copy of the page answers only when it has a PDF made with the same
+ * settings, in the same browser window (the screenshot's `device_mode`,
+ * `viewport` and `color_scheme`, when the request also asks for a screenshot).
+ * `cache.max_age: 0` always makes a new one.
+ *
+ * A PDF on its own is made with the light theme: the PDF has no color setting
+ * of its own.
+ * When the same request also asks for a screenshot with
+ * `color_scheme: 'dark'`, the PDF is dark too.
+ *
+ * ```ts
+ * const pdf: PdfRequest = { paper: 'letter', landscape: true }
+ * ```
+ */
+export interface PdfRequest {
+  /**
+   * `pages` (default): the page on sheets of paper, laid out as in the browser
+   * window (the desktop default, or the screenshot's device and viewport when
+   * the request also asks for one) and shrunk to fit the paper width.
+   * `single_page`: one page as wide as the browser window and as tall as the
+   * web page, up to 15 000 px; a taller page goes on over more pages, with the
+   * `pdf_single_page_overflow` warning.
+   */
+  layout?: PdfLayout
+  /** Paper size for `layout: 'pages'`. Defaults to `a4`. Not allowed with `single_page`. */
+  paper?: PdfPaper
+  /**
+   * Turn the paper sideways, for `layout: 'pages'`. Defaults to `false`. Not
+   * allowed with `single_page`.
+   */
+  landscape?: boolean
+  /**
+   * `screen` (default): the page as it looks on screen. `print`: the site's
+   * own print style, which on many sites hides menus and images; a site
+   * without one looks as on screen.
+   */
+  media?: PdfMedia
 }
 
 /**
@@ -192,11 +269,11 @@ export interface ScrapeCleanup {
 /**
  * Cache settings for a scrape request. `max_age` is the only cache control.
  * A cached result has to match the url, the screenshot setup (type, viewport,
- * device mode), `cleanup.ads_and_popups`, `cleanup.exclude_selectors` and
- * `location.locale`, and `require_js: true` only matches browser-rendered
- * results. A non-zero `actions_before` wait or scroll disables caching for that
- * request. A request with `headers` or `cookies` never reads from or writes to
- * the cache.
+ * device mode, color scheme), the PDF settings, `cleanup.ads_and_popups`,
+ * `cleanup.exclude_selectors` and `location.locale`, and `require_js: true`
+ * only matches browser-rendered results. A non-zero `actions_before` wait or
+ * scroll disables caching for that request. A request with `headers` or
+ * `cookies` never reads from or writes to the cache.
  */
 export interface ScrapeCache {
   /**
@@ -390,6 +467,18 @@ export interface ScreenshotResult {
   slices?: ScreenshotSlice[]
 }
 
+/** Result block returned when a PDF was requested and could be made. */
+export interface PdfResult {
+  /**
+   * Signed URL to download the PDF. Expires 24 hours after the scrape (for an
+   * async scrape, 24 hours after it was submitted; fetching the result again
+   * does not extend it). Download the file; don't keep the link.
+   */
+  url: string
+  /** Size of the PDF file in bytes. */
+  bytes: number
+}
+
 /** A single inline image discovered on the page. */
 export interface PageInlineImage {
   /**
@@ -462,6 +551,8 @@ export interface ScrapeMetadata {
  * - `elements_truncated` — at least one `elements` value hit a limit: a list
  *   was cut, or a value too large to return is `null` (never cut short). See
  *   https://crawlbrulee.com/docs/scrape/targeted-extraction for the limits.
+ * - `pdf_single_page_overflow` — a `single_page` PDF was taller than the
+ *   15 000 px page limit, so it goes on over more pages.
  *
  * Unavailability — that section's extraction failed, so the field is omitted
  * or empty while the rest of the scrape succeeded. These let you tell "the page
@@ -472,6 +563,10 @@ export interface ScrapeMetadata {
  * - `metadata_unavailable` — metadata extraction failed.
  * - `screenshot_unavailable` — a screenshot was asked for, but the page came
  *   back without one. The rest of the result is there.
+ * - `pdf_unavailable` — a PDF was asked for, but the page came back without
+ *   one: it would have been over 50 MB, it did not finish in time, or the page
+ *   could not be loaded in a browser (the site answered an empty error page,
+ *   for example). The rest of the result is there.
  *
  * Request notices:
  *
@@ -492,10 +587,12 @@ export type ScrapeWarningCode =
   | 'raw_html_truncated'
   | 'metadata_truncated'
   | 'elements_truncated'
+  | 'pdf_single_page_overflow'
   | 'links_unavailable'
   | 'inline_images_unavailable'
   | 'metadata_unavailable'
   | 'screenshot_unavailable'
+  | 'pdf_unavailable'
   | 'custom_user_agent'
 
 /**
@@ -568,13 +665,36 @@ export interface ScrapeResponse {
    * instead of returning an empty response: a `422`
    * with `unsupported_screenshot_output` when the content type can't be
    * screenshotted, a `500` when the capture itself failed — and isn't billed.
+   * A request with only a screenshot and a PDF counts as screenshot-only here.
+   *
+   * An async job like that ends `failed` and isn't billed either: reading its
+   * result throws the same `422` ({@link ValidationError}) when the content
+   * type can't be captured, or a `400` `job_failed` when no capture could be
+   * made.
    */
   screenshot?: ScreenshotResult
+  /**
+   * The PDF of the page (when `extract.pdf` and it could be made). When it
+   * can't be made, this field is left out and `warnings` carries
+   * `pdf_unavailable`, while the rest of the scrape comes back. Guard with
+   * `page.pdf?.url`. A PDF-only request (every other format off:
+   * `markdown: false` and `metadata: false`, and no `cleaned_html`,
+   * `raw_html`, `links`, `images`, `elements` or screenshot) whose content
+   * type can't be made into a PDF fails with a `422`
+   * `unsupported_pdf_output` ({@link ValidationError}) and isn't billed; when
+   * no PDF could be made, it fails with a `500` and isn't billed.
+   *
+   * An async job like that ends `failed` and isn't billed either: reading its
+   * result throws the same `422` when the content type can't be made into a
+   * PDF, or a `400` `job_failed` when no PDF could be made.
+   */
+  pdf?: PdfResult
   /** Extracted page metadata (when `extract.metadata`, on by default). */
   metadata?: ScrapeMetadata
   /**
-   * Non-error notices about the scrape — an output was capped (`*_truncated`)
-   * or could not be extracted (`*_unavailable`); see {@link ScrapeWarningCode}
+   * Non-error notices about the scrape: an output was capped (`*_truncated`,
+   * `pdf_single_page_overflow`) or could not be extracted (`*_unavailable`);
+   * see {@link ScrapeWarningCode}
    * for what each one means. The codes are stable and safe to switch on, but
    * the array stays widened to `string` so a newly introduced code doesn't
    * break your build.

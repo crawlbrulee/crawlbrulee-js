@@ -312,6 +312,27 @@ describe('Error mapping', () => {
     await expect(client.scrape({ url: 'not-a-url' })).rejects.toBeInstanceOf(ValidationError)
   })
 
+  it.each(['unsupported_screenshot_output', 'unsupported_pdf_output'] as const)(
+    'maps 422 %s to ValidationError',
+    async name => {
+      const q = createFetchQueue()
+      q.enqueue(jsonResponse({ name, message: 'This content type has no such output.' }, 422))
+      const client = buildClient(q.fetch)
+
+      try {
+        await client.scrape({ url: 'https://example.com/data.json' })
+        throw new Error('expected throw')
+      } catch (err) {
+        // The request asked only for a screenshot or only for a pdf, and the
+        // content type cannot give one: a bad request, like unsupported_content.
+        expect(err).toBeInstanceOf(ValidationError)
+        const e = err as ValidationError
+        expect(e.errorName).toBe(name)
+        expect(e.status).toBe(422)
+      }
+    }
+  )
+
   it('falls back to CrawlbruleeError for unknown error names', async () => {
     const q = createFetchQueue()
     q.enqueue(jsonResponse({ name: 'scrape_error', message: 'page crashed' }, 500))

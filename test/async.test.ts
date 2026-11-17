@@ -52,6 +52,23 @@ describe('Crawlbrulee — async scrape lifecycle', () => {
     expect(JSON.parse(init.body as string)).toEqual(request)
   })
 
+  it('scrapeAsync sends extract.pdf and screenshot.color_scheme unchanged in the POST body', async () => {
+    const q = createFetchQueue()
+    q.enqueue(jsonResponse({ job_id: 'job-pdf' }, 202))
+    const client = buildClient(q.fetch)
+
+    const request: AsyncScrapeRequest = {
+      url: 'https://example.com/report',
+      extract: {
+        screenshot: { type: 'viewport', color_scheme: 'dark' },
+        pdf: { layout: 'single_page', media: 'print' },
+      },
+    }
+    await client.scrapeAsync(request)
+
+    expect(JSON.parse(lastCallOf(q.mock).init.body as string)).toEqual(request)
+  })
+
   it('scrapeAsync sends webhook.url and webhook.metadata in the POST body', async () => {
     const q = createFetchQueue()
     q.enqueue(jsonResponse({ job_id: 'job-wh' }, 202))

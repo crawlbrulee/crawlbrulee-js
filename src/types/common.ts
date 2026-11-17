@@ -5,7 +5,7 @@
 /**
  * Proxy tier used to route the fetch.
  *
- * - `basic` — datacenter proxy, lowest cost.
+ * - `basic` — basic proxy, lowest cost.
  * - `advanced` — enhanced proxy tier with a higher success rate.
  * - `auto` — start at the basic tier and escalate to advanced on failure;
  *   billed at the delivered tier. This is the default when `proxy` is omitted.
@@ -97,6 +97,12 @@ export type ScreenshotType = 'viewport' | 'full_page'
 /** Emulated device class for the viewport (drives default width/height). */
 export type ScreenshotDeviceMode = 'desktop' | 'mobile'
 
+/**
+ * Which theme to ask the site for: `light` (the default) or `dark`. See
+ * {@link ScreenshotRequest.color_scheme}.
+ */
+export type ScreenshotColorScheme = 'light' | 'dark'
+
 /** A `wait` action: pause for `ms` milliseconds before the next step. */
 export interface ScreenshotWaitAction {
   type: 'wait'
@@ -151,6 +157,14 @@ export interface ScreenshotRequest {
   viewport?: ScreenshotViewport
   /** Emulate desktop or mobile. Defaults to `desktop`. */
   device_mode?: ScreenshotDeviceMode
+  /**
+   * `light` (the default) or `dark`. `dark` asks the site for its dark theme,
+   * if it has one, and the screenshot shows it. A site without a dark theme,
+   * or whose dark theme is only a switch on the page, looks the same as with
+   * `light`. When the request also asks for `extract.pdf`, the PDF shows the
+   * dark theme too. No extra credits.
+   */
+  color_scheme?: ScreenshotColorScheme
   /** Pre-capture actions (waits and scrolls). Maximum 5 entries. */
   actions_before?: ScreenshotBeforeAction[]
   /** Post-capture actions (e.g. slice into tiles). Maximum 1 entry. */
@@ -184,6 +198,7 @@ export type ApiErrorName =
   | 'too_many_requests'
   | 'unsupported_content'
   | 'unsupported_screenshot_output'
+  | 'unsupported_pdf_output'
   | 'validation_error'
   | 'antibot_blocked'
   | 'too_many_redirects'

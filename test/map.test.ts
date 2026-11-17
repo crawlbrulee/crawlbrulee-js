@@ -1,6 +1,15 @@
 import { describe, expect, expectTypeOf, it } from 'vitest'
 
-import type { MapDiscoveryCapReason, MapResponse, MapUsage } from '../src/index.js'
+import type {
+  MapDiscoveryCapReason,
+  MapEntries,
+  MapLinkItem,
+  MapLinkType,
+  MapRequest,
+  MapResponse,
+  MapTruncation,
+  MapUsage,
+} from '../src/index.js'
 import { buildClient, createFetchQueue, jsonResponse, lastCallOf } from './helpers.js'
 
 /** Minimal valid `/api/map` body; callers override only what the test is about. */
@@ -13,7 +22,7 @@ function mapResponse(
   } = {}
 ): MapResponse {
   return {
-    links: overrides.links ?? [{ url: 'https://example.com/' }],
+    links: overrides.links ?? [{ url: 'https://example.com/', type: 'page', lastmod: null }],
     response_meta: {
       usage: overrides.usage ?? {
         total_credit_cost: 1,
@@ -31,10 +40,12 @@ function mapResponse(
       truncation: overrides.truncation ?? {
         storage_capped: false,
         response_capped: false,
+        total_before_max_results: 1,
         total_before_max_urls: 1,
         total_detected_before_storage_cap: 1,
         discovery_capped: false,
         sitemaps_skipped: 0,
+        unread_sitemaps: [],
         discovery_cap_reason: null,
       },
     },
@@ -46,7 +57,10 @@ describe('Crawlbrulee.map', () => {
     const q = createFetchQueue()
     q.enqueue(
       jsonResponse({
-        links: [{ url: 'https://example.com/' }, { url: 'https://example.com/about' }],
+        links: [
+          { url: 'https://example.com/', type: 'page', lastmod: null },
+          { url: 'https://example.com/about', type: 'page', lastmod: null },
+        ],
         response_meta: {
           usage: {
             total_credit_cost: 1,
@@ -58,10 +72,12 @@ describe('Crawlbrulee.map', () => {
           truncation: {
             storage_capped: false,
             response_capped: false,
+            total_before_max_results: 2,
             total_before_max_urls: 2,
             total_detected_before_storage_cap: 2,
             discovery_capped: false,
             sitemaps_skipped: 0,
+            unread_sitemaps: [],
             discovery_cap_reason: null,
           },
         },
@@ -73,7 +89,7 @@ describe('Crawlbrulee.map', () => {
       url: 'https://example.com',
       sitemap_only: true,
       types: { internal: true, external: false, internal_subdomains: false },
-      max_urls: 500,
+      max_results: 500,
       page: 1,
       limit: 100,
     })
@@ -97,10 +113,10 @@ describe('Crawlbrulee.map', () => {
     expect(res.response_meta.truncation.discovery_capped).toBe(false)
     expect(res.response_meta.truncation.sitemaps_skipped).toBe(0)
     expect(res.response_meta.truncation.discovery_cap_reason).toBeNull()
-    expect(res.links[0]).toEqual({ url: 'https://example.com/' })
+    expect(res.links[0]).toEqual({ url: 'https://example.com/', type: 'page', lastmod: null })
   })
 
-  it('sends only the fields the caller passed — no client-side max_urls/limit defaults', async () => {
+  it('sends only the fields the caller passed — no client-side max_results/limit defaults', async () => {
     const q = createFetchQueue()
     q.enqueue(jsonResponse(mapResponse()))
     const client = buildClient(q.fetch)
@@ -108,26 +124,31 @@ describe('Crawlbrulee.map', () => {
     await client.map({ url: 'https://example.com' })
 
     const { init } = lastCallOf(q.mock)
-    // the server owns the defaults (max_urls 5000, limit 5000); the sdk must not
+    // the server owns the defaults (max_results 5000, limit 5000); the sdk must not
     // freeze a copy of them into the request body
     expect(JSON.parse(init.body as string)).toEqual({ url: 'https://example.com' })
   })
 
-  it('surfaces a discovery stop at max_urls without setting response_capped', async () => {
+  it('surfaces a discovery stop at max_results without setting response_capped', async () => {
     const q = createFetchQueue()
     q.enqueue(
       jsonResponse(
         mapResponse({
-          links: [{ url: 'https://example.com/' }, { url: 'https://example.com/about' }],
+          links: [
+            { url: 'https://example.com/', type: 'page', lastmod: null },
+            { url: 'https://example.com/about', type: 'page', lastmod: null },
+          ],
           truncation: {
             storage_capped: false,
-            // discovery stops at max_urls, so the list was never trimmed at the end
+            // discovery stops at max_results, so the list was never trimmed at the end
             response_capped: false,
+            total_before_max_results: 2,
             total_before_max_urls: 2,
             total_detected_before_storage_cap: 2,
             discovery_capped: true,
             sitemaps_skipped: 3,
-            discovery_cap_reason: 'max_urls',
+            unread_sitemaps: [],
+            discovery_cap_reason: 'max_results',
           },
           pagination: { page: 1, limit: 5000, total: 2, total_pages: 1, has_more: false },
         })
@@ -135,13 +156,13 @@ describe('Crawlbrulee.map', () => {
     )
     const client = buildClient(q.fetch)
 
-    const res = await client.map({ url: 'https://example.com', max_urls: 2 })
+    const res = await client.map({ url: 'https://example.com', max_results: 2 })
     const { truncation } = res.response_meta
 
     expect(res.links).toHaveLength(2)
     expect(truncation.response_capped).toBe(false)
     expect(truncation.discovery_capped).toBe(true)
-    expect(truncation.discovery_cap_reason).toBe('max_urls')
+    expect(truncation.discovery_cap_reason).toBe('max_results')
     expect(truncation.sitemaps_skipped).toBe(3)
   })
 
@@ -153,10 +174,12 @@ describe('Crawlbrulee.map', () => {
           truncation: {
             storage_capped: false,
             response_capped: false,
+            total_before_max_results: 1,
             total_before_max_urls: 1,
             total_detected_before_storage_cap: 1,
             discovery_capped: true,
             sitemaps_skipped: 12,
+            unread_sitemaps: [],
             discovery_cap_reason: 'file_budget',
           },
         })
@@ -178,10 +201,12 @@ describe('Crawlbrulee.map', () => {
           truncation: {
             storage_capped: false,
             response_capped: false,
+            total_before_max_results: 1,
             total_before_max_urls: 1,
             total_detected_before_storage_cap: 1,
             discovery_capped: true,
             sitemaps_skipped: 2,
+            unread_sitemaps: [],
             discovery_cap_reason: 'unread_files',
           },
         })
@@ -199,7 +224,7 @@ describe('Crawlbrulee.map', () => {
     // A Record over the union fails `pnpm typecheck` when a value is missing
     // from this list or from the type, so the two cannot drift apart silently.
     const reasons: Record<MapDiscoveryCapReason, true> = {
-      max_urls: true,
+      max_results: true,
       time: true,
       file_budget: true,
       depth: true,
@@ -208,7 +233,7 @@ describe('Crawlbrulee.map', () => {
     }
 
     expect(Object.keys(reasons)).toEqual([
-      'max_urls',
+      'max_results',
       'time',
       'file_budget',
       'depth',
@@ -294,5 +319,121 @@ describe('Crawlbrulee.map — zero data retention', () => {
     expect(usage.total_credit_cost).toBe(
       usage.engine_credit_cost! * usage.proxy_multiplier! + usage.zero_data_retention_credit_cost!
     )
+  })
+})
+
+describe('Crawlbrulee.map — sitemap_url, depth, entries and modified_since', () => {
+  it('sends the new top-level fields unchanged', async () => {
+    const q = createFetchQueue()
+    q.enqueue(jsonResponse(mapResponse()))
+    const client = buildClient(q.fetch)
+
+    await client.map({
+      url: 'https://example.com',
+      sitemap_url: 'https://cdn.example.com/sitemaps/products-1.xml.gz',
+      depth: 1,
+      entries: 'all',
+      modified_since: '2026-11-01T00:00:00Z',
+      max_results: 2_000,
+    })
+
+    expect(JSON.parse(lastCallOf(q.mock).init.body as string)).toEqual({
+      url: 'https://example.com',
+      sitemap_url: 'https://cdn.example.com/sitemaps/products-1.xml.gz',
+      depth: 1,
+      entries: 'all',
+      modified_since: '2026-11-01T00:00:00Z',
+      max_results: 2_000,
+    })
+  })
+
+  it('passes a depth through without checking a maximum, so the api decides', async () => {
+    const q = createFetchQueue()
+    q.enqueue(jsonResponse(mapResponse()))
+    const client = buildClient(q.fetch)
+
+    await client.map({ url: 'https://example.com', depth: 9 })
+
+    expect(JSON.parse(lastCallOf(q.mock).init.body as string)).toEqual({
+      url: 'https://example.com',
+      depth: 9,
+    })
+  })
+
+  it('still sends the deprecated max_urls as given', async () => {
+    const q = createFetchQueue()
+    q.enqueue(jsonResponse(mapResponse()))
+    const client = buildClient(q.fetch)
+
+    // the old name must keep working until the api removes it
+    await client.map({ url: 'https://example.com', max_urls: 300 })
+
+    expect(JSON.parse(lastCallOf(q.mock).init.body as string)).toEqual({
+      url: 'https://example.com',
+      max_urls: 300,
+    })
+  })
+
+  it('reads type and lastmod on each link, and unread_sitemaps', async () => {
+    const q = createFetchQueue()
+    q.enqueue(
+      jsonResponse(
+        mapResponse({
+          links: [
+            { url: 'https://example.com/sitemap-products.xml', type: 'sitemap', lastmod: null },
+            {
+              url: 'https://example.com/products/blue-mug',
+              type: 'page',
+              lastmod: '2026-11-10T08:30:00.000Z',
+            },
+          ],
+          truncation: {
+            storage_capped: false,
+            response_capped: false,
+            total_before_max_results: 2,
+            total_before_max_urls: 2,
+            total_detected_before_storage_cap: 2,
+            discovery_capped: true,
+            sitemaps_skipped: 1,
+            unread_sitemaps: ['https://example.com/sitemap-blog.xml'],
+            discovery_cap_reason: 'depth',
+          },
+        })
+      )
+    )
+    const client = buildClient(q.fetch)
+
+    const res = await client.map({ url: 'https://example.com', depth: 0, entries: 'all' })
+
+    expect(res.links[0]).toEqual({
+      url: 'https://example.com/sitemap-products.xml',
+      type: 'sitemap',
+      lastmod: null,
+    })
+    expect(res.links[1]?.type).toBe('page')
+    expect(res.links[1]?.lastmod).toBe('2026-11-10T08:30:00.000Z')
+    expect(res.response_meta.truncation.total_before_max_results).toBe(2)
+    expect(res.response_meta.truncation.discovery_cap_reason).toBe('depth')
+    expect(res.response_meta.truncation.unread_sitemaps).toEqual([
+      'https://example.com/sitemap-blog.xml',
+    ])
+  })
+
+  it('types the new request fields, the link shape and the truncation fields', () => {
+    expectTypeOf<MapRequest['sitemap_url']>().toEqualTypeOf<string | undefined>()
+    expectTypeOf<MapRequest['depth']>().toEqualTypeOf<number | undefined>()
+    expectTypeOf<MapRequest['entries']>().toEqualTypeOf<MapEntries | undefined>()
+    expectTypeOf<MapRequest['modified_since']>().toEqualTypeOf<string | undefined>()
+    expectTypeOf<MapRequest['max_results']>().toEqualTypeOf<number | undefined>()
+    expectTypeOf<MapEntries>().toEqualTypeOf<'pages' | 'sitemaps' | 'all'>()
+    expectTypeOf<MapLinkType>().toEqualTypeOf<'page' | 'sitemap'>()
+    expectTypeOf<MapLinkItem>().toEqualTypeOf<{
+      url: string
+      type: MapLinkType
+      lastmod: string | null
+    }>()
+    expectTypeOf<MapTruncation['total_before_max_results']>().toEqualTypeOf<number>()
+    expectTypeOf<MapTruncation['unread_sitemaps']>().toEqualTypeOf<string[]>()
+    expectTypeOf<MapRequest>().not.toHaveProperty('sitemap')
   })
 })

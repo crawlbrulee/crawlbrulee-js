@@ -170,7 +170,8 @@ notes:
   [proxies & location](https://crawlbrulee.com/docs/proxies) for what each tier does.
 - **`screenshot`**: custom `viewport.width`/`height` are integers in `[16, 10000]` and `device_scale_factor` is in
   `[1, 3]`; out-of-range values are rejected with a `400`. the `url` of the screenshot and of every slice is a signed
-  link that expires 24 hours after the scrape, so download the image and keep the file, not the link. full capture
+  link that expires 24 hours after the scrape, so download the image and keep the file, not the link. set
+  `color_scheme: 'dark'` to ask the site for its dark theme (see [dark mode](#dark-mode)). full capture
   options: [screenshots](https://crawlbrulee.com/docs/scrape/screenshots).
 - **`extract.images`**: urls preserve their query string and resolve document-relative `src`s against the full page url
   (browser parity) — the same rules as `links`. every extract field is documented under
@@ -178,10 +179,12 @@ notes:
 - **`warnings`**: when we complete a scrape but something is worth flagging, the codes land on `page.warnings`, in three
   groups. capped output: `screenshot_truncated` (a long page exceeded the scrolling-screenshot height cap),
   `links_truncated` (more than 30 000 links), `inline_images_truncated` (more than 10 000 inline images),
-  `raw_html_truncated` (more than 10 000 000 characters of body html), and `elements_truncated` (an `elements` value
-  hit a limit, see [elements](#elements)). failed extraction of one section: `links_unavailable`,
-  `inline_images_unavailable`, `metadata_unavailable`, and `screenshot_unavailable` (a screenshot was asked for, but the
-  page came back without one) — the field comes back omitted or empty while the rest of the scrape succeeds, which is
+  `raw_html_truncated` (more than 10 000 000 characters of body html), `elements_truncated` (an `elements` value
+  hit a limit, see [elements](#elements)), and `pdf_single_page_overflow` (a `single_page` pdf was taller than
+  15 000 px, so it goes on over more pages). failed extraction of one section: `links_unavailable`,
+  `inline_images_unavailable`, `metadata_unavailable`, `screenshot_unavailable` (a screenshot was asked for, but the
+  page came back without one) and `pdf_unavailable` (the same for a pdf, see [pdf](#pdf)). the field comes back
+  omitted or empty while the rest of the scrape succeeds, which is
   how you tell "the page had none" from "we couldn't read them". and a request notice: `custom_user_agent` means the request set its own
   `User-Agent` header, which can lower the success rate (see [headers and cookies](#headers-and-cookies)). they're stable, so you can switch on them — the union
   is exported as `ScrapeWarningCode`. `metadata_truncated` is retired and no longer sent; only results stored before
@@ -225,6 +228,60 @@ page.elements?.books // [{ title: 'The Night Garden', price: '€18.90' }, …]
 
 the request types are `ScrapeElements` and `ScrapeElementSpec`; each value on `page.elements` is a
 `ScrapeElementValue`. selector rules and limits: see [targeted extraction](https://crawlbrulee.com/docs/scrape/targeted-extraction).
+
+#### pdf
+
+`extract.pdf` saves the page as a pdf: a real document with selectable text and working links, backgrounds printed,
+and no header or footer added. `{}` takes every default. it costs what a screenshot costs, and a pdf and a screenshot
+in one request are billed once.
+
+```ts
+const page = await crawlbrulee.scrape({
+  url: 'https://example.com/report',
+  extract: {
+    markdown: false,
+    metadata: false,
+    pdf: { paper: 'letter', landscape: true }, // or {} for every default
+  },
+})
+
+page.pdf?.url // signed link, expires 24 hours after the scrape
+page.pdf?.bytes // size of the file
+```
+
+the options are `layout` (`'pages'`, the default, on sheets of paper, or `'single_page'`, one tall page up to
+15 000 px), `paper` (`'a4'`, the default, or `'letter'`) and `landscape` (both only with `'pages'`), and `media`
+(`'screen'`, the default, or `'print'`, the site's own print style). the request type is `PdfRequest`; the result is
+`PdfResult`.
+
+- the `url` is a signed link that expires 24 hours after the scrape, like a screenshot link. download the file and
+  keep it, not the link.
+- when the pdf can't be made, `page.pdf` is left out, `warnings` carries `pdf_unavailable`, and the rest of the scrape
+  still comes back. the request then costs what it costs without the pdf.
+- a pdf-only request, like the one above, turns every other format off. if its content type can't be made into a
+  pdf, it raises `ValidationError` (`422` `unsupported_pdf_output`), not billed. an async pdf-only job in that case,
+  or one that got no pdf, ends `failed` and is not billed (see
+  [`getScrapeResult`](#crawlbruleegetscraperesultjobid-options)).
+- a cached copy of the page answers only when it has a pdf made with the same settings. `cache: { max_age: 0 }` always
+  makes a new one.
+
+#### dark mode
+
+set `color_scheme: 'dark'` on `extract.screenshot` to ask the site for its dark theme. a site without one looks the
+same as with `'light'`, the default. it costs no extra credits.
+
+```ts
+const page = await crawlbrulee.scrape({
+  url: 'https://example.com',
+  extract: {
+    screenshot: { type: 'full_page', color_scheme: 'dark' },
+    pdf: {}, // the pdf shows the dark theme too
+  },
+})
+```
+
+a pdf in the same request is made from the same page, so it is dark too. a pdf on its own is made with the light theme: the pdf
+has no color setting of its own.
 
 #### zero data retention
 
@@ -280,6 +337,11 @@ look up the current state of an async job — `pending`, `running`, `done`, or `
 fetch the result of a completed async job. throws if the job hasn't finished yet. like `scrape()`, a job whose page came
 back as a 404 (or any other status) is a completed job — the result carries `page_status_code`.
 
+a job that asked only for a screenshot, only for a pdf, or for both and nothing else, and got no capture, ends `failed`
+and is not billed. its status says `failed`, and `getScrapeResult()` throws: `ValidationError` (`422`
+`unsupported_screenshot_output` or `unsupported_pdf_output`) when the page's content type can't be captured, or a
+`CrawlbruleeError` with `errorName: 'job_failed'` (`400`) otherwise. a job that got its capture completes as usual.
+
 a job's status and result are available for 24 hours after you submit it. after that, `getScrapeStatus()` and
 `getScrapeResult()` throw `NotFoundError`, the same as for an unknown `jobId`. screenshot links in the result expire at
 the same moment, however late you fetch it.
@@ -305,75 +367,119 @@ under [async scrape](https://crawlbrulee.com/docs/scrape/async).
 
 #### `crawlbrulee.map(request, options?)`
 
-build (or return a cached) link map for a website. combines sitemap discovery with the freshest cached homepage scrape
-when available.
+build (or return a cached) link map of a site from its sitemaps, plus the links on its home page. a plain map reads
+the site's top sitemap files and two levels of nested ones, and returns its pages.
 
 ```ts
 const result = await crawlbrulee.map({
   url: 'https://example.com',
   sitemap_only: false,
   types: { internal: true, internal_subdomains: false, external: false },
-  max_urls: 5_000,
+  max_results: 5_000,
   page: 1,
   limit: 1_000,
 })
 
-console.log(result.links.length, 'urls on page 1 of', result.response_meta.pagination.total_pages)
+for (const link of result.links) {
+  console.log(link.url, link.type, link.lastmod) // 'page' or 'sitemap'; lastmod is a UTC date and time, or null
+}
+console.log(result.response_meta.pagination.total_pages, 'pages of results')
 console.log(result.response_meta.usage.total_credit_cost, 'credits charged') // usage accounting, alongside pagination + truncation
 ```
 
-- **`max_urls`** defaults to `5_000` and maxes out at `100_000`. discovery _stops_ at this number, so a smaller value
-  is a cheaper and faster crawl, not just a shorter answer.
+- **`max_results`** defaults to `5_000` and maxes out at `100_000`. it counts only the kind you ask for in `entries`.
+  discovery _stops_ at this number, so a smaller value is a faster and lighter map, not just a shorter answer.
 - **`limit`** (urls per page) defaults to `5_000` and maxes out at `10_000`.
-- the sdk sends only the fields you pass — omit `max_urls` or `limit` and the server applies its own default.
+- **`entries`**: `'pages'` (the default), `'sitemaps'` (sitemap files) or `'all'` (both).
+- **`sitemap_url`**: start from this sitemap file instead of the site's own top sitemap files. it must be on the same
+  site as `url`, or on a host the site's robots.txt names, such as a CDN.
+- **`depth`**: how many levels of nested sitemaps to follow: `0` to `3`, default `3`. the sdk passes the number
+  through; a higher value raises `ValidationError`.
+- **`modified_since`**: a date such as `'2026-11-01'` (the start of that day in UTC), or an ISO 8601 date and time
+  with a zone, such as `'2026-11-01T08:00:00+01:00'`. only entries whose
+  `lastmod` is at or after it come back, so an entry with no `lastmod` is left out. such a map is always fresh, so
+  `cache.max_age` does nothing. see
+  [find what changed since a date](https://crawlbrulee.com/docs/map/sitemaps#find-what-changed-since-a-date).
+- the sdk sends only the fields you pass: omit `max_results` or `limit` and the server applies its own default.
+- `max_urls` and `truncation.total_before_max_urls` are the old names of `max_results` and
+  `truncation.total_before_max_results`. they still work and always match the new ones, and the api removes them on
+  2027-02-01. when you send both, only `max_results` is used.
+
+every link is `{ url, type, lastmod }`. `type` is `'page'` or `'sitemap'`; a sitemap link is a file you can read with
+`sitemap_url` in another call (on another site, only when the site's robots.txt names its host). a link found on the home page is a `'page'` with `lastmod: null`. the site root is
+listed only when a sitemap lists it. a map with `modified_since` or `sitemap_url` never adds home page links.
 
 `result.response_meta` carries `usage` alongside the map-specific `pagination` and `truncation` blocks. map usage has the
 same fields as scrape usage minus slicing, since a map makes no screenshots: `total_credit_cost` (=
 `engine_credit_cost × proxy_multiplier + zero_data_retention_credit_cost`), `engine_credit_cost` (1 `http`, 0 `cache`),
 `proxy_multiplier`, `zero_data_retention_credit_cost` (0 or 1), the billed
 `engine` and the resolved `proxy`. an empty map is free
-when the site answered only with statuses we don't bill (a `5xx`, for example) or not at all.
+when the site answered only with statuses we don't bill (a `5xx`, for example) or not at all. when the site answers
+`429` for the file in `sitemap_url`, for its robots.txt or for one of its top sitemap files, the map raises
+`RateLimitError` and is not billed.
 
 a map has no `page_status_code`: it reads several pages (sitemaps and the home page), so one status would not describe
 it.
 
 #### did the map miss pages?
 
-a map that stopped at your own `max_urls` comes back with exactly `max_urls` links and `response_capped: false` — the
-signal that more exists is `discovery_cap_reason`, not the capped flags:
+a map that stopped at your own `max_results` has `response_capped: false`. the signal that more exists is
+`discovery_cap_reason`, not the capped flags:
 
 ```ts
 const { truncation } = result.response_meta
 
 if (truncation.discovery_capped) {
   // the site has more pages than this map lists
-  // 'max_urls' | 'time' | 'file_budget' | 'depth' | 'file_size' | 'unread_files'
+  // 'max_results' | 'depth' | 'time' | 'file_budget' | 'file_size' | 'unread_files'
   console.log('stopped by:', truncation.discovery_cap_reason)
   console.log(truncation.sitemaps_skipped, 'sitemap files skipped or partly read')
+  console.log(truncation.unread_sitemaps) // sitemap files this call did not read whole
 }
 
-if (truncation.discovery_cap_reason === 'max_urls') {
-  // the only reason you can fix from the request — ask again with a higher max_urls
+if (truncation.discovery_cap_reason === 'max_results') {
+  // ask again with a higher max_results
 }
 
 if (truncation.discovery_cap_reason === 'unread_files') {
-  // a sitemap file could not be read this time — try the same request again later
+  // a sitemap file could not be read whole this time; try the same request again later
 }
 ```
 
-`unread_files` means a sitemap file the site publishes could not be read at all this time: the request for it failed or
-was rate limited, or the file was not a readable sitemap. that is often temporary, so asking again later can return a
-fuller map.
+- `max_results`: your own `max_results` was reached. ask again with a higher one.
+- `depth`: there are sitemap files past the `depth` you asked for. that is the answer to your `depth`, not a fault.
+- `time`, `file_budget`: the site is big or slow. map it in several calls (below).
+- `file_size`: a sitemap file was too large. a file of pages that turns out too large while it is read gives the
+  links in its first part. a file that says up front that it is over the size limit, or any other file that turns
+  out too large (such as a sitemap index), gives nothing and is listed in `unread_sitemaps`.
+- `unread_files`: a sitemap file could not be read whole this time. when its download broke off, the links received
+  before the break are returned, and the file is listed in `unread_sitemaps`. asking again later can return more.
 
-every other reason (`time`, `file_budget`, `depth`, `file_size`) means the site itself is big, slow or deeply nested;
-re-asking with a higher `max_urls` will not return more, and neither will trying again later.
+`truncation.unread_sitemaps` lists the sitemap files the map knew about but did not read whole (up to 1 000). read
+each one with `sitemap_url` in another call, except a file that says it is over the size limit: no call reads that
+one. it is empty when every file was read.
+
+#### a large site, in several calls
+
+a very large or deep site is mapped in several calls: list its sitemap files with `depth: 0` and
+`entries: 'sitemaps'`, then read each one with `sitemap_url`. `truncation.unread_sitemaps` names the files a call did
+not read whole, to read next. the full walk-through is in
+[map a very large or deep site in several calls](https://crawlbrulee.com/docs/map/sitemaps#map-a-very-large-or-deep-site-in-several-calls).
+
+```ts
+const top = await crawlbrulee.map({ url: 'https://example.com', depth: 0, entries: 'sitemaps' })
+
+for (const file of top.links) {
+  const part = await crawlbrulee.map({ url: 'https://example.com', sitemap_url: file.url })
+  console.log(part.links.length, part.response_meta.truncation.unread_sitemaps)
+}
+```
 
 #### url shape and ordering
 
 returned urls come back normalised, the same way `/scrape` normalises the `url` it returns.
 
-ordering is stable, with the most useful links first,
-so a link item is always just `{ url }`.
+ordering is stable, with the most useful links first.
 
 see the [map endpoint](https://crawlbrulee.com/docs/map) for discovery rules and pagination semantics.
 
@@ -551,6 +657,11 @@ an unknown async job id.
 answer in time, or its tls certificate was not valid. it raises `TargetUnreachableError` with the fixed message "Could
 not reach the target site." and no `details`. you are not charged. the site may come back, so retrying later can help.
 both `/scrape` and `/map` can return it.
+
+**a 422 `unsupported_screenshot_output` or `unsupported_pdf_output` is a `ValidationError`.** the request asked only for
+a screenshot, or only for a pdf, and the content type can't be made into one. a request with only a screenshot and a pdf gets
+`unsupported_screenshot_output`. ask for another format too to get the rest of the page. not billed. an async job
+like that ends `failed`, and reading its result throws the same `422`.
 
 **a 422 `page_too_large` means the page, not the request.** the page's html was too large to process, so it raises
 `PageTooLargeError`, not `ValidationError`. it is terminal: the same url will fail the same way, so do not retry it —

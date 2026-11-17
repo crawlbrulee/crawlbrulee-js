@@ -367,6 +367,7 @@ export function createApiError(body: ApiErrorResponse, status: number): Crawlbru
     case 'blocked_url':
     case 'unsupported_content':
     case 'unsupported_screenshot_output':
+    case 'unsupported_pdf_output':
       return new ValidationError(message, { status, errorName: name, response })
   }
 

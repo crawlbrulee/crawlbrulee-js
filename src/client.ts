@@ -289,8 +289,17 @@ export class Crawlbrulee {
   // ------------------------------------------------------------------
 
   /**
-   * Build (or return a cached) site link-map for a domain. Combines sitemap
-   * discovery with the freshest cached homepage scrape when available.
+   * Build (or return a cached) link map of a site from its sitemaps, plus the
+   * links on its home page. Every link is `{ url, type, lastmod }`.
+   *
+   * By default the map reads the site's top sitemap files and two levels of
+   * nested ones, and returns pages. Use `sitemap_url` to read one sitemap file,
+   * so a very large site can be mapped in several calls. When the site answers
+   * `429` for the file in `sitemap_url`, for its robots.txt or for one of its
+   * top sitemap files, the map raises
+   * {@link RateLimitError} and is not billed.
+   *
+   * See https://crawlbrulee.com/docs/map/sitemaps#map-a-very-large-or-deep-site-in-several-calls.
    */
   map(request: MapRequest, options?: RequestOptions): Promise<MapResponse> {
     return this.http.post<MapResponse>('/api/map', request, options)

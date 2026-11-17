@@ -2,10 +2,18 @@ import { describe, expect, expectTypeOf, it } from 'vitest'
 
 import { ValidationError } from '../src/index.js'
 import type {
+  PdfLayout,
+  PdfMedia,
+  PdfPaper,
+  PdfRequest,
+  PdfResult,
   ScrapeCookie,
+  ScrapeExtract,
   ScrapeRequest,
   ScrapeResponse,
   ScrapeWarningCode,
+  ScreenshotColorScheme,
+  ScreenshotRequest,
   Usage,
 } from '../src/index.js'
 import { buildClient, createFetchQueue, jsonResponse, lastCallOf } from './helpers.js'
@@ -389,5 +397,181 @@ describe('Crawlbrulee.scrape — headers and cookies', () => {
     expectTypeOf<ScrapeRequest['headers']>().toEqualTypeOf<Record<string, string> | undefined>()
     expectTypeOf<ScrapeRequest['cookies']>().toEqualTypeOf<ScrapeCookie[] | undefined>()
     expectTypeOf<ScrapeCookie>().toEqualTypeOf<{ name: string; value: string }>()
+  })
+})
+
+describe('Crawlbrulee.scrape — pdf', () => {
+  it('sends extract.pdf as {} when every default is wanted', async () => {
+    const q = createFetchQueue()
+    q.enqueue(jsonResponse({ url: 'https://example.com/', requested_url: 'https://example.com' }))
+    const client = buildClient(q.fetch)
+
+    await client.scrape({
+      url: 'https://example.com',
+      extract: { markdown: false, metadata: false, pdf: {} },
+    })
+
+    expect(JSON.parse(lastCallOf(q.mock).init.body as string)).toEqual({
+      url: 'https://example.com',
+      extract: { markdown: false, metadata: false, pdf: {} },
+    })
+  })
+
+  it('sends every pdf option unchanged', async () => {
+    const q = createFetchQueue()
+    q.enqueue(jsonResponse({ url: 'https://example.com/', requested_url: 'https://example.com' }))
+    const client = buildClient(q.fetch)
+
+    const pdf: PdfRequest = { layout: 'pages', paper: 'letter', landscape: true, media: 'print' }
+    await client.scrape({ url: 'https://example.com', extract: { pdf } })
+
+    expect(JSON.parse(lastCallOf(q.mock).init.body as string).extract).toEqual({
+      pdf: { layout: 'pages', paper: 'letter', landscape: true, media: 'print' },
+    })
+  })
+
+  it('reads the top-level pdf result next to the other outputs', async () => {
+    const q = createFetchQueue()
+    q.enqueue(
+      jsonResponse({
+        url: 'https://example.com/',
+        requested_url: 'https://example.com',
+        page_status_code: 200,
+        markdown: '# Hello',
+        pdf: { url: 'https://cdn.example.com/pdf/abc.pdf?token=t', bytes: 48213 },
+        response_meta: {
+          usage: {
+            total_credit_cost: 5,
+            engine_credit_cost: 5,
+            proxy_multiplier: 1,
+            screenshot_slicing_credit_cost: 0,
+            zero_data_retention_credit_cost: 0,
+            engine: 'screenshot',
+            proxy: 'basic',
+          },
+        },
+      })
+    )
+    const client = buildClient(q.fetch)
+
+    const page = await client.scrape({ url: 'https://example.com', extract: { pdf: {} } })
+
+    expect(page.pdf).toEqual({ url: 'https://cdn.example.com/pdf/abc.pdf?token=t', bytes: 48213 })
+    expect(page.markdown).toBe('# Hello')
+    expect(page.response_meta.usage.engine).toBe('screenshot')
+  })
+
+  it('reads pdf_unavailable when the pdf could not be made, and leaves pdf out', async () => {
+    const q = createFetchQueue()
+    q.enqueue(
+      jsonResponse({
+        url: 'https://example.com/',
+        requested_url: 'https://example.com',
+        markdown: '# Hello',
+        warnings: ['pdf_unavailable'],
+      })
+    )
+    const client = buildClient(q.fetch)
+
+    const page = await client.scrape({ url: 'https://example.com', extract: { pdf: {} } })
+
+    expect(page.pdf).toBeUndefined()
+    expect(page.warnings).toEqual(['pdf_unavailable'])
+    expect(page.markdown).toBe('# Hello')
+  })
+
+  it('reads pdf_single_page_overflow next to the pdf', async () => {
+    const q = createFetchQueue()
+    q.enqueue(
+      jsonResponse({
+        url: 'https://example.com/',
+        requested_url: 'https://example.com',
+        pdf: { url: 'https://cdn.example.com/pdf/tall.pdf', bytes: 912000 },
+        warnings: ['pdf_single_page_overflow'],
+      })
+    )
+    const client = buildClient(q.fetch)
+
+    const page = await client.scrape({
+      url: 'https://example.com',
+      extract: { markdown: false, metadata: false, pdf: { layout: 'single_page' } },
+    })
+
+    expect(page.pdf?.bytes).toBe(912000)
+    expect(page.warnings).toEqual(['pdf_single_page_overflow'])
+  })
+
+  it('raises ValidationError for unsupported_pdf_output', async () => {
+    const q = createFetchQueue()
+    q.enqueue(
+      jsonResponse(
+        { name: 'unsupported_pdf_output', message: 'This content type cannot be saved as a PDF.' },
+        422
+      )
+    )
+    const client = buildClient(q.fetch)
+
+    await expect(
+      client.scrape({
+        url: 'https://example.com/data.json',
+        extract: { markdown: false, metadata: false, pdf: {} },
+      })
+    ).rejects.toBeInstanceOf(ValidationError)
+  })
+
+  it('types the pdf request, its options, the result and the warnings', () => {
+    expectTypeOf<ScrapeExtract['pdf']>().toEqualTypeOf<PdfRequest | undefined>()
+    expectTypeOf<PdfLayout>().toEqualTypeOf<'pages' | 'single_page'>()
+    expectTypeOf<PdfPaper>().toEqualTypeOf<'a4' | 'letter'>()
+    expectTypeOf<PdfMedia>().toEqualTypeOf<'screen' | 'print'>()
+    expectTypeOf<PdfRequest>().toEqualTypeOf<{
+      layout?: PdfLayout
+      paper?: PdfPaper
+      landscape?: boolean
+      media?: PdfMedia
+    }>()
+    expectTypeOf<ScrapeResponse['pdf']>().toEqualTypeOf<PdfResult | undefined>()
+    expectTypeOf<PdfResult>().toEqualTypeOf<{ url: string; bytes: number }>()
+    expectTypeOf<'pdf_unavailable'>().toMatchTypeOf<ScrapeWarningCode>()
+    expectTypeOf<'pdf_single_page_overflow'>().toMatchTypeOf<ScrapeWarningCode>()
+  })
+})
+
+describe('Crawlbrulee.scrape — dark mode', () => {
+  it('sends screenshot.color_scheme unchanged, next to a pdf', async () => {
+    const q = createFetchQueue()
+    q.enqueue(jsonResponse({ url: 'https://example.com/', requested_url: 'https://example.com' }))
+    const client = buildClient(q.fetch)
+
+    await client.scrape({
+      url: 'https://example.com',
+      extract: { screenshot: { type: 'full_page', color_scheme: 'dark' }, pdf: {} },
+    })
+
+    expect(JSON.parse(lastCallOf(q.mock).init.body as string).extract).toEqual({
+      screenshot: { type: 'full_page', color_scheme: 'dark' },
+      pdf: {},
+    })
+  })
+
+  it('does not send color_scheme when it is not set', async () => {
+    const q = createFetchQueue()
+    q.enqueue(jsonResponse({ url: 'https://example.com/', requested_url: 'https://example.com' }))
+    const client = buildClient(q.fetch)
+
+    await client.scrape({
+      url: 'https://example.com',
+      extract: { screenshot: { type: 'viewport' } },
+    })
+
+    const body = JSON.parse(lastCallOf(q.mock).init.body as string)
+    expect(body.extract.screenshot).not.toHaveProperty('color_scheme')
+  })
+
+  it('types color_scheme as light or dark', () => {
+    expectTypeOf<ScreenshotColorScheme>().toEqualTypeOf<'light' | 'dark'>()
+    expectTypeOf<ScreenshotRequest['color_scheme']>().toEqualTypeOf<
+      ScreenshotColorScheme | undefined
+    >()
   })
 })
