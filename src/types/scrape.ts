@@ -321,8 +321,10 @@ export interface ScrapeRequest {
   /** Cache settings for this request. */
   cache?: ScrapeCache
   /**
-   * Use a headless browser to render JavaScript before scraping. Adds latency
-   * and credits — only enable when the page requires it. Default `false`.
+   * Go straight to a headless browser to render JavaScript before scraping.
+   * Without it, we still move to a browser on our own when a page needs one;
+   * set it when you already know the page needs JavaScript, to save time.
+   * Default `false`.
    */
   require_js?: boolean
   /**
@@ -334,8 +336,10 @@ export interface ScrapeRequest {
    */
   cleanup?: ScrapeCleanup
   /**
-   * Proxy tier to use for fetching. Defaults to `auto` (tries the basic tier
-   * first, escalates to advanced on failure; billed at the delivered tier).
+   * Proxy tier. Defaults to `auto`: we start with the lightest way to get the
+   * page and step up our effort on our own when a site needs more (a stronger
+   * proxy, a real browser, or both), billed at the delivered tier. `basic` or
+   * `advanced` pins the tier.
    */
   proxy?: ProxyTier
   /** Optional locale + country emulation. */
@@ -623,7 +627,7 @@ export interface ScrapeResponse {
    * you, for example `if (page.page_status_code === 404)`.
    *
    * Billing follows this status: 2xx and 4xx pages are billed, except 403,
-   * 407, 408, 429 and 451; 5xx pages are never billed.
+   * 407, 408, 429, 444 and 451; 5xx pages are never billed.
    *
    * Optional only because older api versions do not send it.
    */

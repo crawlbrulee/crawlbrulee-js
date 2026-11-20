@@ -33,7 +33,8 @@ export interface MapLocation {
 
 /**
  * What a map returns, sent as {@link MapRequest.entries}: `pages` (page
- * addresses, the default), `sitemaps` (sitemap files) or `all` (both).
+ * addresses, the default), `sitemaps` (sitemap files, of type `sitemap` or
+ * `sitemap_index`) or `all` (both).
  */
 export type MapEntries = 'pages' | 'sitemaps' | 'all'
 
@@ -45,8 +46,9 @@ export interface MapRequest {
    */
   url: string
   /**
-   * Proxy tier to use for fetching. Defaults to `auto` (tries the basic tier
-   * first, escalates to advanced on failure; billed at the delivered tier).
+   * Proxy tier. Defaults to `auto`: we start on basic and move to a stronger
+   * proxy on our own when a site needs it, billed at the delivered tier.
+   * `basic` or `advanced` pins the tier.
    */
   proxy?: ProxyTier
   /**
@@ -79,12 +81,20 @@ export interface MapRequest {
    *
    * With `sitemap_url`, level 0 is that file, and it is read. Without it,
    * level 0 is the list of the site's top sitemap files, which `depth: 0`
-   * returns without reading them: `{ depth: 0, entries: 'sitemaps' }` lists a
-   * site's top sitemap files.
+   * returns without reading their entries. A top file found at one of the
+   * usual addresses can still show as `sitemap_index`, because finding it
+   * shows its kind.
    *
    * A sitemap index holds only sitemap files, so reading one at a low depth
    * with `entries: 'pages'` returns no pages. Ask with `entries: 'sitemaps'`
    * or a higher depth.
+   *
+   * `{ depth: 1, entries: 'sitemaps' }` lists the site's top sitemap files and
+   * every file they list, in one call. A listed file shows as `sitemap` until
+   * a map opens it, even when it is a sitemap index itself. To go deeper, read
+   * a listed file with `sitemap_url`, or ask with a higher depth. A large site
+   * can reach `max_results` or a discovery limit first;
+   * {@link MapTruncation.discovery_cap_reason} then says which.
    */
   depth?: number
   /**
@@ -96,9 +106,13 @@ export interface MapRequest {
    * An ISO 8601 date and time with a zone, such as `2026-11-01T00:00:00Z`.
    * Only entries whose `lastmod` is at or after it come back. An entry with no
    * `lastmod` is left out, so every entry returned matches; links found on the
-   * home page have no `lastmod`, so none of them is returned. A nested sitemap
-   * whose own `lastmod` is older is not read, so a site that does not update
-   * the dates in its sitemap index can hide changed pages.
+   * home page have no `lastmod`, so none of them is returned.
+   *
+   * Every sitemap file is read whatever its own `lastmod`, and each entry
+   * returned, a page or a sitemap file, is judged by its own `lastmod`. With
+   * `entries: 'sitemaps'`, a sitemap file is returned when its own `lastmod`
+   * matches, not when a page in it does: to find the pages that changed, ask
+   * with `entries: 'pages'`.
    *
    * A request with this field is always mapped fresh: it never reads from or
    * adds to the cache, and each call is priced as a fresh map.
@@ -138,12 +152,22 @@ export interface MapRequest {
 }
 
 /**
- * What a link in a map result is: `page` for a page address, `sitemap` for a
- * sitemap file, which you can read with `sitemap_url` in another call. A file
- * on another site is read that way only when the site's robots.txt names its
- * host.
+ * What a link in a map result is:
+ *
+ * - `page`: a page address.
+ * - `sitemap_index`: a sitemap file that this map found to be a sitemap index
+ *   (a file that lists other sitemap files), whether it read all of the file,
+ *   part of it, or only its start. Such a file can also be in
+ *   {@link MapTruncation.unread_sitemaps} when this map did not read all of
+ *   it.
+ * - `sitemap`: any other sitemap file: one that lists pages, or one whose kind
+ *   this map did not learn (past `depth`, or it could not be read).
+ *
+ * Read a `sitemap` or `sitemap_index` file with `sitemap_url` in another call.
+ * A file on another site is read that way only when the site's robots.txt
+ * names its host.
  */
-export type MapLinkType = 'page' | 'sitemap'
+export type MapLinkType = 'page' | 'sitemap' | 'sitemap_index'
 
 /** Single discovered URL in a map result. */
 export interface MapLinkItem {
@@ -153,8 +177,9 @@ export interface MapLinkItem {
    */
   url: string
   /**
-   * `page` for a page address, `sitemap` for a sitemap file you can read with
-   * `sitemap_url` in another call. A link found on the home page is a `page`.
+   * `page` for a page address; `sitemap` or `sitemap_index` for a sitemap file
+   * you can read with `sitemap_url` in another call (see {@link MapLinkType}).
+   * A link found on the home page is a `page`.
    */
   type: MapLinkType
   /**
@@ -186,8 +211,10 @@ export interface MapPagination {
  *   again with a higher one to get more.
  * - `depth`: there are sitemap files past the `depth` you asked for. That is
  *   the answer to the depth you chose, not a fault: with `depth: 0` it is how
- *   a site's top sitemap files are listed. The files past it are in
- *   {@link MapTruncation.unread_sitemaps}; read each one with `sitemap_url`.
+ *   a site's top sitemap files are listed, and with `depth: 1` and
+ *   `entries: 'sitemaps'` how the top files and every file they list are
+ *   listed. The files past it are in {@link MapTruncation.unread_sitemaps};
+ *   read each one with `sitemap_url`, or ask with a higher depth.
  * - `time`: discovery ran out of its time budget.
  * - `file_budget`: the site has more sitemap files than one request reads.
  * - `file_size`: a sitemap file was too large. A file that says up front

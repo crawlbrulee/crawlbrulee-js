@@ -160,12 +160,12 @@ notes:
   }
   ```
 
-  billing follows the site's status: 2xx and 4xx pages are billed, except 403, 407, 408, 429 and 451; 5xx pages are
-  never billed. an unbilled page reports `total_credit_cost: 0`. errors are thrown when we could not return the page
+  billing follows the site's status: 2xx and 4xx pages are billed, except 403, 407, 408, 429, 444 and 451; 5xx pages
+  are never billed. an unbilled page reports `total_credit_cost: 0`. errors are thrown when we could not return the page
   — see [errors](#errors).
 
-- **`proxy`**: defaults to `auto` when omitted — it starts at the basic tier and escalates to advanced on failure,
-  billed at the delivered tier. pass `'basic'` or `'advanced'` to pin a tier. on the response,
+- **`proxy`**: defaults to `auto` when omitted. we start with the lightest way to get the page and step up our effort
+  on our own when a site needs more: a stronger proxy, a real browser, or both. billed at the delivered tier. pass `'basic'` or `'advanced'` to pin a tier. on the response,
   `response_meta.usage.proxy` reports the tier we resolved and used — never `'auto'`. see
   [proxies & location](https://crawlbrulee.com/docs/proxies) for what each tier does.
 - **`screenshot`**: custom `viewport.width`/`height` are integers in `[16, 10000]` and `device_scale_factor` is in
@@ -381,7 +381,7 @@ const result = await crawlbrulee.map({
 })
 
 for (const link of result.links) {
-  console.log(link.url, link.type, link.lastmod) // 'page' or 'sitemap'; lastmod is a UTC date and time, or null
+  console.log(link.url, link.type, link.lastmod) // 'page', 'sitemap' or 'sitemap_index'; lastmod is a UTC date and time, or null
 }
 console.log(result.response_meta.pagination.total_pages, 'pages of results')
 console.log(result.response_meta.usage.total_credit_cost, 'credits charged') // usage accounting, alongside pagination + truncation
@@ -390,23 +390,32 @@ console.log(result.response_meta.usage.total_credit_cost, 'credits charged') // 
 - **`max_results`** defaults to `5_000` and maxes out at `100_000`. it counts only the kind you ask for in `entries`.
   discovery _stops_ at this number, so a smaller value is a faster and lighter map, not just a shorter answer.
 - **`limit`** (urls per page) defaults to `5_000` and maxes out at `10_000`.
-- **`entries`**: `'pages'` (the default), `'sitemaps'` (sitemap files) or `'all'` (both).
+- **`entries`**: `'pages'` (the default), `'sitemaps'` (sitemap files, of type `'sitemap'` or `'sitemap_index'`) or
+  `'all'` (both).
 - **`sitemap_url`**: start from this sitemap file instead of the site's own top sitemap files. it must be on the same
   site as `url`, or on a host the site's robots.txt names, such as a CDN.
 - **`depth`**: how many levels of nested sitemaps to follow: `0` to `3`, default `3`. the sdk passes the number
-  through; a higher value raises `ValidationError`.
+  through; a higher value raises `ValidationError`. `depth: 1` with `entries: 'sitemaps'` lists the site's top sitemap
+  files and every file they list, in one call. to go deeper, read a listed file with `sitemap_url`, or ask with a
+  higher depth.
 - **`modified_since`**: a date such as `'2026-11-01'` (the start of that day in UTC), or an ISO 8601 date and time
   with a zone, such as `'2026-11-01T08:00:00+01:00'`. only entries whose
-  `lastmod` is at or after it come back, so an entry with no `lastmod` is left out. such a map is always fresh, so
-  `cache.max_age` does nothing. see
+  `lastmod` is at or after it come back, so an entry with no `lastmod` is left out. every sitemap file is read
+  whatever its own `lastmod`, and each entry returned, a page or a sitemap file, is judged by its own `lastmod`: with
+  `entries: 'sitemaps'`, a file comes back when its own `lastmod` matches, not when a page in it does, so ask with
+  `entries: 'pages'` to find the pages that changed. such a map is always fresh, so `cache.max_age` does nothing. see
   [find what changed since a date](https://crawlbrulee.com/docs/map/sitemaps#find-what-changed-since-a-date).
 - the sdk sends only the fields you pass: omit `max_results` or `limit` and the server applies its own default.
 - `max_urls` and `truncation.total_before_max_urls` are the old names of `max_results` and
   `truncation.total_before_max_results`. they still work and always match the new ones, and the api removes them on
   2027-02-01. when you send both, only `max_results` is used.
 
-every link is `{ url, type, lastmod }`. `type` is `'page'` or `'sitemap'`; a sitemap link is a file you can read with
-`sitemap_url` in another call (on another site, only when the site's robots.txt names its host). a link found on the home page is a `'page'` with `lastmod: null`. the site root is
+every link is `{ url, type, lastmod }`. `type` is `'page'`, `'sitemap'` or `'sitemap_index'`. a `'sitemap_index'` is a
+sitemap file that this map found to be a sitemap index (a file that lists other sitemap files), whether it read all of
+it, part of it, or only its start; it can also be in `unread_sitemaps` when the map did not read all of it. any other
+sitemap file is a `'sitemap'`: one that lists pages, or one whose kind the map did not learn (past `depth`, or it could
+not be read). you can read either kind with `sitemap_url` in another call (on another site, only when the site's
+robots.txt names its host). a link found on the home page is a `'page'` with `lastmod: null`. the site root is
 listed only when a sitemap lists it. a map with `modified_since` or `sitemap_url` never adds home page links.
 
 `result.response_meta` carries `usage` alongside the map-specific `pagination` and `truncation` blocks. map usage has the
@@ -448,6 +457,7 @@ if (truncation.discovery_cap_reason === 'unread_files') {
 
 - `max_results`: your own `max_results` was reached. ask again with a higher one.
 - `depth`: there are sitemap files past the `depth` you asked for. that is the answer to your `depth`, not a fault.
+  read the files in `unread_sitemaps` with `sitemap_url`, or ask with a higher depth.
 - `time`, `file_budget`: the site is big or slow. map it in several calls (below).
 - `file_size`: a sitemap file was too large. a file of pages that turns out too large while it is read gives the
   links in its first part. a file that says up front that it is over the size limit, or any other file that turns
@@ -461,15 +471,23 @@ one. it is empty when every file was read.
 
 #### a large site, in several calls
 
-a very large or deep site is mapped in several calls: list its sitemap files with `depth: 0` and
-`entries: 'sitemaps'`, then read each one with `sitemap_url`. `truncation.unread_sitemaps` names the files a call did
-not read whole, to read next. the full walk-through is in
+a very large or deep site is mapped in several calls: list its sitemap files with `depth: 1` and
+`entries: 'sitemaps'`. then read each link of type `'sitemap'` with `sitemap_url`, plus each `'sitemap_index'` link
+that is also in `unread_sitemaps` (an index this map read only in part). the files of an index read whole are
+already in your list. a listed file shows as `'sitemap'` until a map opens it, even when it
+is a sitemap index itself; reading it then follows its own files, and its own `unread_sitemaps` names the files to
+read next. the full walk-through is in
 [map a very large or deep site in several calls](https://crawlbrulee.com/docs/map/sitemaps#map-a-very-large-or-deep-site-in-several-calls).
 
 ```ts
-const top = await crawlbrulee.map({ url: 'https://example.com', depth: 0, entries: 'sitemaps' })
+const tree = await crawlbrulee.map({ url: 'https://example.com', depth: 1, entries: 'sitemaps' })
 
-for (const file of top.links) {
+const unread = new Set(tree.response_meta.truncation.unread_sitemaps)
+const toRead = tree.links.filter(
+  link => link.type === 'sitemap' || (link.type === 'sitemap_index' && unread.has(link.url))
+)
+
+for (const file of toRead) {
   const part = await crawlbrulee.map({ url: 'https://example.com', sitemap_url: file.url })
   console.log(part.links.length, part.response_meta.truncation.unread_sitemaps)
 }

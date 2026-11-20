@@ -4,6 +4,21 @@ all notable changes to `@crawlbrulee/sdk` are documented here.
 
 this project follows [Semantic Versioning](https://semver.org). while on `0.x`, minor versions may include breaking changes.
 
+## unreleased
+
+### added
+
+- **`MapLinkType` has `'sitemap_index'`.** a sitemap file the map found to be a sitemap index now comes back with
+  `type: 'sitemap_index'`. the readme shows how to map a large site in several calls, starting with `depth: 1` and
+  `entries: 'sitemaps'`.
+
+### changed
+
+- **a `444` page is not billed.** the `page_status_code` doc comment and the readme list it with 403, 407, 408, 429 and 451. text only, no change to the types.
+- **`proxy` and `require_js` doc comments.** `auto`, the default, starts with the lightest way to get the page and steps
+  up on its own when a site needs more: a stronger proxy, a real browser, or both. `require_js` goes straight to a
+  browser; without it, a page that needs one still gets one. text only, no change to the types.
+
 ## 1.5.0 (2026-11-18)
 
 ### added

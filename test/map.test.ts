@@ -419,6 +419,48 @@ describe('Crawlbrulee.map — sitemap_url, depth, entries and modified_since', (
     ])
   })
 
+  it('reads a sitemap_index link from a depth 1, entries sitemaps map', async () => {
+    const q = createFetchQueue()
+    q.enqueue(
+      jsonResponse(
+        mapResponse({
+          links: [
+            {
+              url: 'https://example.com/sitemap_index.xml',
+              type: 'sitemap_index',
+              lastmod: '2026-11-12T00:00:00.000Z',
+            },
+            { url: 'https://example.com/sitemap-products.xml', type: 'sitemap', lastmod: null },
+          ],
+          truncation: {
+            storage_capped: false,
+            response_capped: false,
+            total_before_max_results: 2,
+            total_before_max_urls: 2,
+            total_detected_before_storage_cap: 2,
+            discovery_capped: true,
+            sitemaps_skipped: 2,
+            unread_sitemaps: [
+              'https://example.com/sitemap_index.xml',
+              'https://example.com/sitemap-products.xml',
+            ],
+            discovery_cap_reason: 'depth',
+          },
+        })
+      )
+    )
+    const client = buildClient(q.fetch)
+
+    const res = await client.map({ url: 'https://example.com', depth: 1, entries: 'sitemaps' })
+
+    expect(res.links.map(link => link.type)).toEqual(['sitemap_index', 'sitemap'])
+    expect(JSON.parse(lastCallOf(q.mock).init.body as string)).toEqual({
+      url: 'https://example.com',
+      depth: 1,
+      entries: 'sitemaps',
+    })
+  })
+
   it('types the new request fields, the link shape and the truncation fields', () => {
     expectTypeOf<MapRequest['sitemap_url']>().toEqualTypeOf<string | undefined>()
     expectTypeOf<MapRequest['depth']>().toEqualTypeOf<number | undefined>()
@@ -426,7 +468,7 @@ describe('Crawlbrulee.map — sitemap_url, depth, entries and modified_since', (
     expectTypeOf<MapRequest['modified_since']>().toEqualTypeOf<string | undefined>()
     expectTypeOf<MapRequest['max_results']>().toEqualTypeOf<number | undefined>()
     expectTypeOf<MapEntries>().toEqualTypeOf<'pages' | 'sitemaps' | 'all'>()
-    expectTypeOf<MapLinkType>().toEqualTypeOf<'page' | 'sitemap'>()
+    expectTypeOf<MapLinkType>().toEqualTypeOf<'page' | 'sitemap' | 'sitemap_index'>()
     expectTypeOf<MapLinkItem>().toEqualTypeOf<{
       url: string
       type: MapLinkType
